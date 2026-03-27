@@ -129,8 +129,6 @@
     letter-spacing: 0.3px; white-space: nowrap;
   }
   .ref-empty { color: #9ca3af; font-size: 12px; font-style: italic; }
-
-  /* ── Title link ─────────────────────────────────────────────── */
   .title-link {
     color: #005eb8;
     text-decoration: none;
@@ -139,7 +137,6 @@
   }
   .title-link:hover { color: #003087; text-decoration: underline; }
   .title-link:visited { color: #4c2c92; }
-
   .pill {
     display: inline-block; padding: 3px 10px;
     border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap;
@@ -201,7 +198,6 @@
 </header>
 
 <div class="wrapper">
-
   <div class="toolbar">
     <div class="search-wrap">
       <span class="search-icon">&#128269;</span>
@@ -245,7 +241,6 @@
       <div class="page-btns" id="pageBtns"></div>
     </div>
   </div>
-
 </div>
 
 <script>
@@ -334,7 +329,6 @@ function applyFilters() {
   const search = document.getElementById("searchInput").value.toLowerCase().trim();
   const typeF  = document.getElementById("typeFilter").value;
   const yearF  = document.getElementById("yearFilter").value;
-
   filtered = DATA.filter(item => {
     const matchSearch = !search ||
       item.ref.toLowerCase().includes(search) ||
@@ -344,7 +338,6 @@ function applyFilters() {
     const matchYear = !yearF || item.date.startsWith(yearF);
     return matchSearch && matchType && matchYear;
   });
-
   filtered.sort((a, b) => {
     let va = a[sortKey] || "";
     let vb = b[sortKey] || "";
@@ -352,7 +345,6 @@ function applyFilters() {
     if (va > vb) return  1 * sortDir;
     return 0;
   });
-
   currentPage = 1;
   render();
 }
@@ -382,12 +374,10 @@ function render() {
   const totalItems = filtered.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
   if (currentPage > totalPages) currentPage = totalPages;
-
   const start = (currentPage - 1) * PAGE_SIZE;
   const end   = Math.min(start + PAGE_SIZE, totalItems);
   const page  = filtered.slice(start, end);
   const tbody = document.getElementById("tableBody");
-
   if (page.length === 0) {
     tbody.innerHTML = `<tr class="empty-row"><td colspan="4">&#128203; No items match your search or filter.</td></tr>`;
   } else {
@@ -395,11 +385,9 @@ function render() {
       const refCell = item.ref
         ? `<span class="ref-badge">${item.ref}</span>`
         : `<span class="ref-empty">-</span>`;
-
       const titleCell = item.link
         ? `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="title-link">${item.title}</a>`
         : item.title;
-
       return `
         <tr>
           <td>${refCell}</td>
@@ -409,20 +397,17 @@ function render() {
         </tr>`;
     }).join("");
   }
-
   const from = totalItems === 0 ? 0 : start + 1;
   document.getElementById("resultInfo").textContent =
     `Showing ${from}-${end} of ${totalItems} item${totalItems !== 1 ? "s" : ""}`;
   document.getElementById("pageInfo").textContent =
     `Page ${currentPage} of ${totalPages}`;
-
   renderPagination(totalPages);
 }
 
 function renderPagination(totalPages) {
   const container = document.getElementById("pageBtns");
   container.innerHTML = "";
-
   function btn(label, action, disabled, active, ellipsis) {
     const b = document.createElement("button");
     b.className = "page-btn" + (active ? " active" : "") + (ellipsis ? " ellipsis" : "");
@@ -431,10 +416,8 @@ function renderPagination(totalPages) {
     if (!disabled && !active && !ellipsis) b.onclick = action;
     container.appendChild(b);
   }
-
   btn("&#171; First", () => goTo(1),                currentPage === 1,          false, false);
   btn("&#8249; Prev",  () => goTo(currentPage - 1), currentPage === 1,          false, false);
-
   const pages = [];
   if (totalPages <= 7) {
     for (let i = 1; i <= totalPages; i++) pages.push(i);
@@ -447,12 +430,10 @@ function renderPagination(totalPages) {
     if (currentPage < totalPages - 2) pages.push("...");
     pages.push(totalPages);
   }
-
   pages.forEach(p => {
     if (p === "...") { btn("...", null, true, false, true); }
     else { btn(p, () => goTo(p), false, p === currentPage, false); }
   });
-
   btn("Next &#8250;", () => goTo(currentPage + 1), currentPage === totalPages, false, false);
   btn("Last &#187;",  () => goTo(totalPages),       currentPage === totalPages, false, false);
 }
@@ -473,7 +454,6 @@ function clearFilters() {
 document.getElementById("searchInput").addEventListener("input",  applyFilters);
 document.getElementById("typeFilter").addEventListener("change", applyFilters);
 document.getElementById("yearFilter").addEventListener("change", applyFilters);
-
 updateSortArrows();
 applyFilters();
 </script>
