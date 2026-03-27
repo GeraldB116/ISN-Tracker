@@ -1,168 +1,427 @@
-import re, os, sys, requests
+import re, os, sys, requests, time
+
 from bs4 import BeautifulSoup
+
 from datetime import datetime
 
 URL       = "https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity"
+
 HTML_FILE = "index.html"
+
 BASE_URL  = "https://digital.nhs.uk"
+
 TARGET_IDS = [
-    "data-assurance-board-dab-approvals-from-april-2025",
-    "data-assurance-board-dab-approvals-from-march-2024-march-2025",
+
+"data-assurance-board-dab-approvals-from-april-2025",
+
+"data-assurance-board-dab-approvals-from-march-2024-march-2025",
+
 ]
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-GB,en;q=0.9",
-}
+
 MONTH_MAP = {
-    "january":"01","february":"02","march":"03","april":"04",
-    "may":"05","june":"06","july":"07","august":"08",
-    "september":"09","october":"10","november":"11","december":"12",
+
+"january":"01","february":"02","march":"03","april":"04",
+
+"may":"05","june":"06","july":"07","august":"08",
+
+"september":"09","october":"10","november":"11","december":"12",
+
 }
+
 REF_RE = re.compile(r'^((?:DAPB|DCB|SCCI|ISB|ISN)\d+[\w\-]*)', re.IGNORECASE)
 
-def clean(text):
-    text = text.replace("\xa0"," ").replace("\u200b","")
-    return re.sub(r"\s+"," ",text).strip()
+# ─────────────────────────────────────────────────────────────────
 
-def format_date(raw):
-    raw = clean(raw)
-    m = re.match(r'^\d{1,2}\s+([A-Za-z]+)\s+(\d{4})',raw)
-    if m:
-        return f"{m.group(2)}-{MONTH_MAP.get(m.group(1).lower(),'01')}-01"
-    m = re.match(r'^([A-Za-z]+)\s+(\d{4})',raw)
-    if m:
-        return f"{m.group(2)}-{MONTH_MAP.get(m.group(1).lower(),'01')}-01"
-    return raw
+# FETCH — uses a full browser session to avoid 403 blocks
 
-def parse_type(raw):
-    t = clean(raw).lower()
-    if "standard and collection" in t or "standard & collection" in t:
-        return "Standard & Collection"
-    if "standard" in t and "collection" in t:
-        return "Standard & Collection"
-    if "collection" in t: return "Collection"
-    if "standard" in t:   return "Standard"
-    if "consultation" in t: return "Consultation"
-    return clean(raw)
-
-def extract_ref(text):
-    m = REF_RE.match(text)
-    return m.group(1).upper().strip() if m else ""
+# ─────────────────────────────────────────────────────────────────
 
 def fetch(url):
-    print(f"  Fetching: {url}")
-    r = requests.get(url, headers=HEADERS, timeout=30)
-    r.raise_for_status()
-    print(f"  Status  : {r.status_code} OK")
-    return BeautifulSoup(r.text,"lxml")
+
+"""
+
+Use a requests Session with full browser-like headers.
+
+Visit the homepage first to get cookies, then request the target page.
+
+This mimics a real browser visit and avoids 403 blocks.
+
+"""
+
+print(f"  Fetching : {url}")
+
+session = requests.Session()
+
+# Full set of headers matching a real Chrome browser on Windows
+
+session.headers.update({
+
+"User-Agent": (
+
+"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+
+"AppleWebKit/537.36 (KHTML, like Gecko) "
+
+"Chrome/123.0.0.0 Safari/537.36"
+
+),
+
+"Accept": (
+
+"text/html,application/xhtml+xml,application/xml;"
+
+"q=0.9,image/avif,image/webp,image/apng,*/*;"
+
+"q=0.8,application/signed-exchange;v=b3;q=0.7"
+
+),
+
+"Accept-Language":  "en-GB,en;q=0.9",
+
+"Accept-Encoding":  "gzip, deflate, br",
+
+"Connection":       "keep-alive",
+
+"Upgrade-Insecure-Requests": "1",
+
+"Sec-Fetch-Dest":   "document",
+
+"Sec-Fetch-Mode":   "navigate",
+
+"Sec-Fetch-Site":   "none",
+
+"Sec-Fetch-User":   "?1",
+
+"Cache-Control":    "max-age=0",
+
+"sec-ch-ua": '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+
+"sec-ch-ua-mobile":   "?0",
+
+"sec-ch-ua-platform": '"Windows"',
+
+})
+
+# Step 1: visit the NHS Digital homepage first to collect cookies
+
+try:
+
+home = session.get("https://digital.nhs.uk", timeout=30)
+
+print(f"  Homepage : {home.status_code}")
+
+time.sleep(2)
+
+except Exception:
+
+pass   # continue even if homepage visit fails
+
+# Step 2: now request the actual target page
+
+resp = session.get(url, timeout=30)
+
+print(f"  Status   : {resp.status_code}")
+
+resp.raise_for_status()
+
+return BeautifulSoup(resp.text, "lxml")
+
+# ─────────────────────────────────────────────────────────────────
+
+# HELPERS
+
+# ─────────────────────────────────────────────────────────────────
+
+def clean(text):
+
+text = text.replace("\xa0"," ").replace("\u200b","")
+
+return re.sub(r"\s+"," ",text).strip()
+
+def format_date(raw):
+
+raw = clean(raw)
+
+m = re.match(r'^\d{1,2}\s+([A-Za-z]+)\s+(\d{4})',raw)
+
+if m:
+
+return f"{m.group(2)}-{MONTH_MAP.get(m.group(1).lower(),'01')}-01"
+
+m = re.match(r'^([A-Za-z]+)\s+(\d{4})',raw)
+
+if m:
+
+return f"{m.group(2)}-{MONTH_MAP.get(m.group(1).lower(),'01')}-01"
+
+return raw
+
+def parse_type(raw):
+
+t = clean(raw).lower()
+
+if "standard and collection" in t or "standard & collection" in t:
+
+return "Standard & Collection"
+
+if "standard" in t and "collection" in t:
+
+return "Standard & Collection"
+
+if "collection" in t: return "Collection"
+
+if "standard"   in t: return "Standard"
+
+if "consultation" in t: return "Consultation"
+
+return clean(raw)
+
+def extract_ref(text):
+
+m = REF_RE.match(text)
+
+return m.group(1).upper().strip() if m else ""
 
 def find_table(section):
-    for t in section.find_all("table"):
-        if t.has_attr("data-responsive"):
-            return t
-    w = section.find("div", class_="nhsd-m-table")
-    if w:
-        t = w.find("table")
-        if t: return t
-    return section.find("table")
+
+for t in section.find_all("table"):
+
+if t.has_attr("data-responsive"):
+
+return t
+
+w = section.find("div", class_="nhsd-m-table")
+
+if w:
+
+t = w.find("table")
+
+if t: return t
+
+return section.find("table")
+
+# ─────────────────────────────────────────────────────────────────
+
+# SCRAPE
+
+# ─────────────────────────────────────────────────────────────────
 
 def scrape(soup):
-    items, seen = [], set()
-    for div_id in TARGET_IDS:
-        section = soup.find("div", id=div_id)
-        if not section:
-            print(f"  WARNING: Section not found: {div_id}")
-            continue
-        h = section.find(["h2","h3"])
-        print(f"\n  SECTION: {clean(h.get_text()) if h else div_id}")
-        table = find_table(section)
-        if not table:
-            print("  WARNING: No table found")
-            continue
-        tbody = table.find("tbody")
-        if not tbody:
-            print("  WARNING: No tbody")
-            continue
-        rows = tbody.find_all("tr")
-        print(f"  ROWS   : {len(rows)}")
-        count = 0
-        for tr in rows:
-            cells = tr.find_all(["td","th"])
-            if len(cells) < 2: continue
-            nc   = cells[0]
-            name = clean(nc.get_text(separator=" "))
-            if not name: continue
-            ref   = extract_ref(name)
-            title = name
-            a     = nc.find("a", href=True)
-            href  = a.get("href","") if a else ""
-            link  = href if href.startswith("http") else BASE_URL + href
-            key   = ref if ref else title
-            if key in seen: continue
-            seen.add(key)
-            date_raw  = cells[1].get_text(separator=" ") if len(cells)>1 else ""
-            type_raw  = cells[2].get_text(separator=" ") if len(cells)>2 else ""
-            items.append({
-                "ref":ref,"title":title,
-                "type":parse_type(type_raw),
-                "status":"Approved",
-                "date":format_date(date_raw),
-                "link":link
-            })
-            count += 1
-        print(f"  ITEMS  : {count}")
-    return items
+
+items, seen = [], set()
+
+for div_id in TARGET_IDS:
+
+section = soup.find("div", id=div_id)
+
+if not section:
+
+print(f"  WARNING: Section not found: {div_id}")
+
+continue
+
+h = section.find(["h2","h3"])
+
+print(f"\n  SECTION: {clean(h.get_text()) if h else div_id}")
+
+table = find_table(section)
+
+if not table:
+
+print("  WARNING: No table found")
+
+continue
+
+tbody = table.find("tbody")
+
+if not tbody:
+
+print("  WARNING: No tbody")
+
+continue
+
+rows = tbody.find_all("tr")
+
+print(f"  ROWS   : {len(rows)}")
+
+count = 0
+
+for tr in rows:
+
+cells = tr.find_all(["td","th"])
+
+if len(cells) < 2: continue
+
+nc   = cells[0]
+
+name = clean(nc.get_text(separator=" "))
+
+if not name: continue
+
+ref   = extract_ref(name)
+
+title = name
+
+a     = nc.find("a", href=True)
+
+href  = a.get("href","") if a else ""
+
+link  = href if href.startswith("http") else BASE_URL + href
+
+key   = ref if ref else title
+
+if key in seen: continue
+
+seen.add(key)
+
+date_raw  = cells[1].get_text(separator=" ") if len(cells)>1 else ""
+
+type_raw  = cells[2].get_text(separator=" ") if len(cells)>2 else ""
+
+items.append({
+
+"ref"   : ref,
+
+"title" : title,
+
+"type"  : parse_type(type_raw),
+
+"status": "Approved",
+
+"date"  : format_date(date_raw),
+
+"link"  : link,
+
+})
+
+count += 1
+
+print(f"  ITEMS  : {count}")
+
+return items
+
+# ─────────────────────────────────────────────────────────────────
+
+# BUILD JAVASCRIPT ARRAY
+
+# ─────────────────────────────────────────────────────────────────
 
 def build_js_array(items):
-    def esc(s): return s.replace("\\","\\\\").replace('"','\\"')
-    rows = []
-    for i in items:
-        rows.append(
-            f'  {{ ref:"{esc(i["ref"])}", title:"{esc(i["title"])}", '
-            f'type:"{esc(i["type"])}", status:"{esc(i["status"])}", '
-            f'date:"{esc(i["date"])}", link:"{esc(i["link"])}" }}'
-        )
-    return "[\n" + ",\n".join(rows) + "\n]"
+
+def esc(s): return s.replace("\\","\\\\").replace('"','\\"')
+
+rows = []
+
+for i in items:
+
+rows.append(
+
+f'  {{ ref:"{esc(i["ref"])}", title:"{esc(i["title"])}", '
+
+f'type:"{esc(i["type"])}", status:"{esc(i["status"])}", '
+
+f'date:"{esc(i["date"])}", link:"{esc(i["link"])}" }}'
+
+)
+
+return "[\n" + ",\n".join(rows) + "\n]"
+
+# ─────────────────────────────────────────────────────────────────
+
+# INJECT INTO HTML
+
+# ─────────────────────────────────────────────────────────────────
 
 def inject(items, path):
-    if not os.path.exists(path):
-        print(f"ERROR: {path} not found"); sys.exit(1)
-    with open(path,"r",encoding="utf-8") as f:
-        html = f.read()
-    if "const DATA" not in html:
-        print("ERROR: const DATA not found"); sys.exit(1)
-    pat = re.compile(r"const\s+DATA\s*=\s*\[[\s\S]*?\]\s*;", re.MULTILINE)
-    rep = f"const DATA = {build_js_array(items)};"
-    new = pat.sub(lambda m: rep, html)
-    if new == html:
-        print("ERROR: DATA array not replaced"); sys.exit(1)
-    print(f"  OK: DATA array replaced ({len(items)} items)")
-    today = datetime.now().strftime("%d %b %Y")
-    new = re.sub(r"Last updated:[\s\w]+\d{4}", f"Last updated: {today}", new)
-    with open(path,"w",encoding="utf-8") as f:
-        f.write(new)
-    print(f"  SAVED: {os.path.abspath(path)}")
+
+if not os.path.exists(path):
+
+print(f"ERROR: {path} not found")
+
+sys.exit(1)
+
+with open(path,"r",encoding="utf-8") as f:
+
+html = f.read()
+
+if "const DATA" not in html:
+
+print("ERROR: const DATA not found in HTML")
+
+sys.exit(1)
+
+pat = re.compile(r"const\s+DATA\s*=\s*\[[\s\S]*?\]\s*;", re.MULTILINE)
+
+rep = f"const DATA = {build_js_array(items)};"
+
+new = pat.sub(lambda m: rep, html)
+
+if new == html:
+
+print("ERROR: DATA array was not replaced")
+
+sys.exit(1)
+
+print(f"  OK: {len(items)} items injected")
+
+today = datetime.now().strftime("%d %b %Y")
+
+new   = re.sub(r"Last updated:[\s\w]+\d{4}", f"Last updated: {today}", new)
+
+with open(path,"w",encoding="utf-8") as f:
+
+f.write(new)
+
+print(f"  SAVED: {os.path.abspath(path)}")
+
+# ─────────────────────────────────────────────────────────────────
+
+# MAIN
+
+# ─────────────────────────────────────────────────────────────────
 
 def main():
-    preview = "--preview" in sys.argv
-    print("\n" + "="*55)
-    print("  Altera ISN Tracker - NHS Digital Scraper")
-    print(f"  {datetime.now().strftime('%d %B %Y  %H:%M')}")
-    print("="*55)
-    soup  = fetch(URL)
-    items = scrape(soup)
-    if not items:
-        print("\nERROR: No items extracted"); sys.exit(1)
-    print(f"\n  TOTAL: {len(items)} items\n")
-    for i,item in enumerate(items,1):
-        print(f"  {i:<3} {item['ref']:<20} {item['date']:<12} {item['title'][:35]}")
-    if preview:
-        print("\n  Preview only - HTML not changed"); return
-    inject(items, HTML_FILE)
-    print("\n" + "="*55)
-    print(f"  DONE - open {HTML_FILE} in your browser")
-    print("="*55 + "\n")
+
+preview = "--preview" in sys.argv
+
+print("\n" + "="*55)
+
+print("  Altera ISN Tracker — NHS Digital Scraper")
+
+print(f"  {datetime.now().strftime('%d %B %Y  %H:%M')}")
+
+print("="*55 + "\n")
+
+soup  = fetch(URL)
+
+items = scrape(soup)
+
+if not items:
+
+print("\nERROR: No items extracted")
+
+sys.exit(1)
+
+print(f"\n  TOTAL: {len(items)} items\n")
+
+for idx, item in enumerate(items, 1):
+
+print(f"  {idx:<3} {item['ref']:<20} {item['date']:<12} {item['title'][:40]}")
+
+if preview:
+
+print("\n  Preview only — HTML not changed")
+
+return
+
+inject(items, HTML_FILE)
+
+print("\n" + "="*55)
+
+print(f"  DONE — {HTML_FILE} updated")
+
+print("="*55 + "\n")
 
 if __name__ == "__main__":
-    main()
+
+main()
