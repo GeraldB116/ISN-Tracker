@@ -1,42 +1,63 @@
 name: Scrape NHS Digital and Deploy
 
 on:
-  schedule:
-    - cron: '0 7 * * *'
-  workflow_dispatch:
+
+schedule:
+
+- cron: '0 7 * * *'
+
+workflow_dispatch:
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
-  contents: write
+
+contents: write
 
 jobs:
-  scrape-and-deploy:
-    runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+scrape-and-deploy:
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+runs-on: ubuntu-latest
 
-      - name: Install Python dependencies
-        run: pip install playwright beautifulsoup4 lxml
+steps:
 
-      - name: Install Playwright browsers
-        run: playwright install chromium --with-deps
+- name: Checkout repository
 
-      - name: Run scraper
-        run: python scraper.py
+uses: actions/checkout@v4
 
-      - name: Commit updated index.html
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git diff --cached --quiet || git commit -m "Auto-update: NHS Digital scrape $(date +'%Y-%m-%d')"
-          git push
+- name: Set up Python
+
+uses: actions/setup-python@v5
+
+with:
+
+python-version: '3.12'
+
+- name: Install dependencies
+
+run: pip install cloudscraper beautifulsoup4 lxml requests
+
+- name: Run scraper with AI summaries
+
+env:
+
+OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+run: python scraper.py
+
+- name: Commit updated index.html
+
+run: |
+
+git config user.name  "github-actions[bot]"
+
+git config user.email "github-actions[bot]@users.noreply.github.com"
+
+git add index.html
+
+git diff --cached --quiet || git commit -m "Auto-update: NHS Digital scrape $(date +'%Y-%m-%d')"
+
+git push
