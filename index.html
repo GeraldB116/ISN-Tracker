@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Altera ISN Tracker</title>
+<style>
+  /* ── Reset & base ───────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 14px;
+    background: #f0f4f8;
+    color: #1a1a1a;
+    min-height: 100vh;
+  }
+
+  /* ── Banner ─────────────────────────────────────────────────── */
+  .banner {
+    background: #003087;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 64px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+  }
+  .banner-left { display: flex; align-items: center; gap: 14px; }
+  .banner-icon {
+    width: 38px; height: 38px;
+    background: #005eb8;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: #fff; font-weight: 900;
+    flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.25);
+  }
+  .banner-title {
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .banner-sub {
+    color: rgba(255,255,255,0.65);
+    font-size: 12px;
+    margin-top: 1px;
+  }
+  .banner-right {
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    text-align: right;
+  }
+  .banner-accent {
+    height: 4px;
+    background: linear-gradient(90deg, #005eb8 0%, #0072ce 50%, #41b6e6 100%);
+  }
+
+  /* ── Layout wrapper ─────────────────────────────────────────── */
+  .wrapper {
+    max-width: 1280px;
+    margin: 28px auto;
+    padding: 0 20px;
+  }
+
+  /* ── Toolbar ────────────────────────────────────────────────── */
+  .toolbar {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+    font-size: 15px;
+    pointer-events: none;
+  }
+  .search-wrap input {
+    width: 100%;
+    padding: 9px 12px 9px 34px;
+    border: 1px solid #d0d7de;
+    border-radius: 7px;
+    font-size: 14px;
+    color: #1a1a1a;
+    background: #fafbfc;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-wrap input:focus {
+    border-color: #005eb8;
+    box-shadow: 0 0 0 3px rgba(0,94,184,0.12);
+    background: #fff;
+  }
+  .search-wrap input::placeholder { color: #9ca3af; }
+  .toolbar select {
+    padding: 9px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 7px;
+    font-size: 14px;
+    color: #1a1a1a;
+    background: #fafbfc;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+    min-width: 160px;
+  }
+  .toolbar select:focus { border-color: #005eb8; }
+  .btn-clear {
+    padding: 9px 18px;
+    background: #f3f4f6;
+    border: 1px solid #d0d7de;
+    border-radius: 7px;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+  .btn-clear:hover { background: #e5e7eb; }
+  .result-info {
+    color: #6b7280;
+    font-size: 13px;
+    white-space: nowrap;
+    margin-left: auto;
+  }
+
+  /* ── Table card ─────────────────────────────────────────────── */
+  .card {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+  }
+  thead { background: #003087; }
+  thead th {
+    padding: 13px 16px;
+    text-align: left;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  thead th:hover { background: #005eb8; }
+  thead th .sort-arrow { margin-left: 5px; opacity: 0.55; font-size: 11px; }
+  thead th.sorted .sort-arrow { opacity: 1; }
+
+  tbody tr {
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.12s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f0f6ff; }
+  tbody tr:nth-child(even) { background: #fafbfc; }
+  tbody tr:nth-child(even):hover { background: #f0f6ff; }
+
+  td {
+    padding: 12px 16px;
+    font-size: 13.5px;
+    vertical-align: middle;
+    color: #1a1a1a;
+  }
+
+  /* Reference badge */
+  .ref-badge {
+    display: inline-block;
+    background: #e8f0fe;
+    color: #003087;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 5px;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  .ref-empty {
+    color: #9ca3af;
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  /* Type pill */
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .pill-standard   { background: #dbeafe; color: #1e40af; }
+  .pill-collection { background: #d1fae5; color: #065f46; }
+  .pill-both       { background: #ede9fe; color: #5b21b6; }
+  .pill-consult    { background: #fef3c7; color: #92400e; }
+  .pill-default    { background: #f3f4f6; color: #374151; }
+
+  /* Date cell */
+  .date-cell { white-space: nowrap; color: #374151; }
+
+  /* Empty state */
+  .empty-row td {
+    text-align: center;
+    padding: 48px 16px;
+    color: #9ca3af;
+    font-size: 15px;
+  }
+
+  /* ── Pagination ──────────────────────────────────────────────── */
+  .pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+  }
+  .page-info { color: #6b7280; font-size: 13px; }
+  .page-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+  .page-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    background: #fff;
+    color: #374151;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .page-btn:hover:not(:disabled):not(.active) {
+    background: #f0f6ff;
+    border-color: #005eb8;
+    color: #003087;
+  }
+  .page-btn.active {
+    background: #003087;
+    color: #fff;
+    border-color: #003087;
+    cursor: default;
+  }
+  .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .page-btn.ellipsis { border: none; background: none; cursor: default; color: #9ca3af; }
+
+  /* ── Responsive ─────────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    .banner { padding: 0 16px; min-height: 56px; }
+    .banner-title { font-size: 18px; }
+    .wrapper { margin: 16px auto; padding: 0 12px; }
+    .toolbar { padding: 12px; gap: 8px; }
+    .result-info { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── BANNER ─────────────────────────────────────────────────── -->
+<header>
+  <div class="banner">
+    <div class="banner-left">
+      <div class="banner-icon">A</div>
+      <div>
+        <div class="banner-title">Altera ISN Tracker</div>
+        <div class="banner-sub">NHS Information Standards &amp; Collections</div>
+      </div>
+    </div>
+    <div class="banner-right">
+      Last updated: <span id="lastUpdated">27 Mar 2025</span>
+    </div>
+  </div>
+  <div class="banner-accent"></div>
+</header>
+
+<!-- ── MAIN WRAPPER ───────────────────────────────────────────── -->
+<div class="wrapper">
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">&#128269;</span>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search by reference, title or type..."
+        autocomplete="off"
+      />
+    </div>
+
+    <select id="typeFilter">
+      <option value="">All Types</option>
+      <option value="Standard">Standard</option>
+      <option value="Collection">Collection</option>
+      <option value="Standard &amp; Collection">Standard &amp; Collection</option>
+      <option value="Consultation">Consultation</option>
+    </select>
+
+    <select id="yearFilter">
+      <option value="">All Years</option>
+      <option value="2024">2024</option>
+      <option value="2025">2025</option>
+      <option value="2026">2026</option>
+    </select>
+
+    <button class="btn-clear" onclick="clearFilters()">&#10005; Clear</button>
+
+    <span class="result-info" id="resultInfo">Showing 0 items</span>
+  </div>
+
+  <!-- Table card -->
+  <div class="card">
+    <div class="table-wrap">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th onclick="sortBy('ref')"    id="th-ref">
+              Reference <span class="sort-arrow" id="arr-ref">&#8597;</span>
+            </th>
+            <th onclick="sortBy('title')"  id="th-title">
+              Title <span class="sort-arrow" id="arr-title">&#8597;</span>
+            </th>
+            <th onclick="sortBy('type')"   id="th-type">
+              Type <span class="sort-arrow" id="arr-type">&#8597;</span>
+            </th>
+            <th onclick="sortBy('date')"   id="th-date">
+              Date <span class="sort-arrow" id="arr-date">&#8597;</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination bar -->
+    <div class="pagination-bar">
+      <span class="page-info" id="pageInfo">Page 1 of 1</span>
+      <div class="page-btns" id="pageBtns"></div>
+    </div>
+  </div>
+
+</div><!-- /wrapper -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   DATA
+   Dates stored as ISO "YYYY-MM-DD" — displayed as DD/MM/YYYY
+   ═══════════════════════════════════════════════════════════════ */
+const DATA = [
+  { ref:"DAPB4073",      title:"Virtual Wards (Hospital at Home)",                                                  type:"Collection",            status:"Approved", date:"2026-01-01" },
+  { ref:"DAPB3051",      title:"Identity Verification and Authentication Standard for Digital Health and Care Services (Proxy standard)",  type:"Standard",              status:"Approved", date:"2025-12-01" },
+  { ref:"DAPB0089",      title:"Cover of Vaccination Evaluated Rapidly (COVER)",                                    type:"Standard & Collection", status:"Approved", date:"2025-10-01" },
+  { ref:"DAPB4019",      title:"Reasonable Adjustment Digital Flag (RADF)",                                         type:"Standard",              status:"Approved", date:"2025-10-01" },
+  { ref:"DAPB0084",      title:"OPCS 4.11",                                                                         type:"Standard",              status:"Approved", date:"2025-10-01" },
+  { ref:"DAPB1577",      title:"Diagnostic Imaging Set (DIDS) v2",                                                  type:"Standard & Collection", status:"Approved", date:"2025-10-01" },
+  { ref:"DAPB4067",      title:"National Maternity Operational Pressures Situation Report (SitRep)",                type:"Collection",            status:"Approved", date:"2025-09-01" },
+  { ref:"DAPB0086",      title:"Data Security and Protection Toolkit v8",                                           type:"Standard",              status:"Approved", date:"2025-07-01" },
+  { ref:"DAPB2054-4026", title:"Friends and Family Test: Post-COVID Assessment Clinics Retired",                    type:"Collection",            status:"Approved", date:"2025-07-01" },
+  { ref:"DAPB2054-3144", title:"Friends and Family Test: Quarterly Staff Survey",                                   type:"Collection",            status:"Approved", date:"2025-07-01" },
+  { ref:"DAPB2090-2171", title:"GPES: Learning Disabilities Data (LDD) 2024-25",                                   type:"Collection",            status:"Approved", date:"2025-07-01" },
+  { ref:"DAPB3042",      title:"Resident Doctors (RDs): Rota Code of Practice Compliance",                         type:"Collection",            status:"Approved", date:"2025-07-01" },
+  { ref:"DAPB1605",      title:"Accessible Information",                                                            type:"Standard",              status:"Approved", date:"2025-06-01" },
+  { ref:"DAPB2235-01",   title:"GPES: National Diabetes Audit (Core)",                                              type:"Collection",            status:"Approved", date:"2025-06-01" },
+  { ref:"DAPB4122",      title:"Oliver McGowan Training",                                                           type:"Collection",            status:"Approved", date:"2025-06-01" },
+  { ref:"DAPB1533",      title:"Systemic Anti-Cancer Therapy Data Set",                                             type:"Standard",              status:"Approved", date:"2025-06-01" },
+  { ref:"DAPB4121",      title:"Canonical Data Model (Draft)",                                                      type:"Standard",              status:"Approved", date:"2025-06-01" },
+  { ref:"DAPB3139",      title:"Mental Health, Learning Disability, Autism (MHLDA) Sit Reps",                      type:"Collection",            status:"Approved", date:"2025-05-01" },
+  { ref:"DAPB1521",      title:"Cancer Outcomes and Services Data set (COSD)",                                      type:"Standard",              status:"Approved", date:"2025-05-01" },
+  { ref:"DAPB2090-3038", title:"GPES: Physical Health Checks for people with Severe Mental Illness (PHSMI)",       type:"Standard",              status:"Approved", date:"2025-05-01" },
+  { ref:"DAPB2090-2183", title:"GPES: Quality and Outcomes Framework (QOF)",                                       type:"Collection",            status:"Approved", date:"2025-05-01" },
+  { ref:"DAPB4003",      title:"Board Vacancies and Commercial Spend",                                              type:"Collection",            status:"Approved", date:"2025-05-01" },
+  { ref:"DAPB0095",      title:"Referral to Treatment",                                                             type:"Collection",            status:"Approved", date:"2025-05-01" },
+  { ref:"DAPB3009",      title:"Healthy Child Programme Information Standard",                                      type:"Standard",              status:"Approved", date:"2025-04-01" },
+  { ref:"DAPB4000",      title:"Patient Level Information and Costing System (PLICS) 24/25",                       type:"Standard",              status:"Approved", date:"2025-04-01" },
+  { ref:"DAPB2090-3141", title:"GPES: Childhood Immunisations Hexavalent (6-in-1) Vaccination",                   type:"Collection",            status:"Approved", date:"2025-04-01" },
+  { ref:"DAPB2179",      title:"GPES: Measles, Mumps, Rubella (MMR) Vaccination",                                  type:"Collection",            status:"Approved", date:"2025-04-01" },
+  { ref:"DAPB2090-3114", title:"GPES: COVID-19 At Risk Patients",                                                  type:"Collection",            status:"Approved", date:"2025-04-01" },
+  { ref:"DAPB2090-4087", title:"GPES: COVID-19 At Risk Patients Detained Estate",                                  type:"Collection",            status:"Approved", date:"2025-04-01" },
+  { ref:"DAPB4108",      title:"Digital Maturity Assessment (DMA)",                                                 type:"Collection",            status:"Approved", date:"2025-04-01" },
+  { ref:"DAPB4119",      title:"Perinatal Pathology Data Set",                                                      type:"Collection",            status:"Approved", date:"2025-04-01" },
+  { ref:"DAPB3085",      title:"All Age Continuing Care Data Set",                                                  type:"Standard",              status:"Approved", date:"2025-04-01" },
+  { ref:"DAPB2090-4084", title:"GPES: Network Contract Direct Enhanced Services (NCD)",                            type:"Collection",            status:"Approved", date:"2025-03-01" },
+  { ref:"DAPB3031",      title:"Integrated Urgent Care Aggregate Data Collection (IUCADC)",                        type:"Collection",            status:"Approved", date:"2025-03-01" },
+  { ref:"DAPB2090-3010", title:"GPES: GMS Core Contract",                                                          type:"Collection",            status:"Approved", date:"2025-03-01" },
+  { ref:"DAPB2083",      title:"Estates Return Information Collection (ERIC)",                                      type:"Collection",            status:"Approved", date:"2025-03-01" },
+  { ref:"DAPB2050",      title:"Aggregate Contract Monitoring",                                                     type:"Standard",              status:"Approved", date:"2025-01-01" },
+  { ref:"DAPB2212",      title:"Drugs Patient Level Contract Monitoring",                                           type:"Standard",              status:"Approved", date:"2025-01-01" },
+  { ref:"DAPB3002",      title:"Patient Level Contract Monitoring",                                                 type:"Standard",              status:"Approved", date:"2025-01-01" },
+  { ref:"DAPB3003",      title:"Devices Patient Level Contract Monitoring",                                         type:"Collection",            status:"Approved", date:"2025-01-01" },
+  { ref:"DAPB3103",      title:"Medical Devices Outcomes Registry",                                                 type:"Collection",            status:"Approved", date:"2024-12-01" },
+  { ref:"DAPB2235",      title:"National Diabetes Audit",                                                           type:"Collection",            status:"Approved", date:"2024-12-01" },
+  { ref:"DAPB4115",      title:"Theatre Estate Register",                                                           type:"Collection",            status:"Approved", date:"2024-12-01" },
+  { ref:"DAPB1069",      title:"Child Protection Information Sharing",                                              type:"Standard",              status:"Approved", date:"2024-10-01" },
+  { ref:"DAPB1067",      title:"National Workforce Dataset (NWD)",                                                  type:"Standard",              status:"Approved", date:"2024-08-01" },
+  { ref:"DAPB4109",      title:"Intermediate Care Data Collection",                                                 type:"Collection",            status:"Approved", date:"2024-07-01" },
+  { ref:"DAPB4094",      title:"Healthcare Operational Data Flows: Acute Information Standard",                     type:"Standard",              status:"Approved", date:"2024-06-01" },
+  { ref:"DAPB4005",      title:"Secondary Care Electronic Prescribing and Medicines Administration (ePMA) Data Collection", type:"Standard",    status:"Approved", date:"2024-05-01" },
+  { ref:"DAPB0092-2062", title:"Emergency Care Data Set v4",                                                        type:"Collection",            status:"Approved", date:"2024-05-01" },
+  { ref:"ISB1594",       title:"Information Sharing to Tackle Violence (ISTV) Minimum Data Set",                   type:"Collection",            status:"Approved", date:"2024-05-01" },
+  { ref:"DAPB4101",      title:"Pathology and Laboratory Medicine Reporting Information Standard",                  type:"Standard",              status:"Approved", date:"2024-03-01" },
+  { ref:"DAPB4102",      title:"Adult Social Care Digital Social Care Record (DSCR): Minimum Operational Data Specification", type:"Standard", status:"Approved", date:"2024-03-01" }
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   DATE FORMATTING — DD/MM/YYYY
+   ═══════════════════════════════════════════════════════════════ */
+function fmtDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TYPE PILL
+   ═══════════════════════════════════════════════════════════════ */
+function typePill(type) {
+  if (!type) return '<span class="pill pill-default">—</span>';
+  const t = type.toLowerCase();
+  if (t.includes("standard") && t.includes("collection"))
+    return `<span class="pill pill-both">${type}</span>`;
+  if (t === "standard")
+    return `<span class="pill pill-standard">${type}</span>`;
+  if (t === "collection")
+    return `<span class="pill pill-collection">${type}</span>`;
+  if (t.includes("consultation"))
+    return `<span class="pill pill-consult">${type}</span>`;
+  return `<span class="pill pill-default">${type}</span>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════════ */
+const PAGE_SIZE = 25;
+let currentPage  = 1;
+let sortKey      = "date";
+let sortDir      = -1;   // -1 = descending (newest first)
+let filtered     = [];
+
+/* ═══════════════════════════════════════════════════════════════
+   FILTER
+   ═══════════════════════════════════════════════════════════════ */
+function applyFilters() {
+  const search = document.getElementById("searchInput").value.toLowerCase().trim();
+  const typeF  = document.getElementById("typeFilter").value;
+  const yearF  = document.getElementById("yearFilter").value;
+
+  filtered = DATA.filter(item => {
+    const matchSearch = !search ||
+      item.ref.toLowerCase().includes(search) ||
+      item.title.toLowerCase().includes(search) ||
+      item.type.toLowerCase().includes(search);
+
+    const matchType = !typeF || item.type === typeF;
+
+    // Year filter: check if the ISO date string contains the year
+    const matchYear = !yearF || item.date.startsWith(yearF);
+
+    return matchSearch && matchType && matchYear;
+  });
+
+  // Sort
+  filtered.sort((a, b) => {
+    let va = a[sortKey] || "";
+    let vb = b[sortKey] || "";
+    if (va < vb) return -1 * sortDir;
+    if (va > vb) return  1 * sortDir;
+    return 0;
+  });
+
+  currentPage = 1;
+  render();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SORT
+   ═══════════════════════════════════════════════════════════════ */
+function sortBy(key) {
+  if (sortKey === key) {
+    sortDir = -sortDir;
+  } else {
+    sortKey = key;
+    sortDir = 1;
+  }
+  updateSortArrows();
+  applyFilters();
+}
+
+function updateSortArrows() {
+  const cols = ["ref", "title", "type", "date"];
+  cols.forEach(c => {
+    const th  = document.getElementById(`th-${c}`);
+    const arr = document.getElementById(`arr-${c}`);
+    if (c === sortKey) {
+      th.classList.add("sorted");
+      arr.innerHTML = sortDir === 1 ? "&#8593;" : "&#8595;";
+    } else {
+      th.classList.remove("sorted");
+      arr.innerHTML = "&#8597;";
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER TABLE
+   ═══════════════════════════════════════════════════════════════ */
+function render() {
+  const totalItems = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const end   = Math.min(start + PAGE_SIZE, totalItems);
+  const page  = filtered.slice(start, end);
+
+  const tbody = document.getElementById("tableBody");
+
+  if (page.length === 0) {
+    tbody.innerHTML = `
+      <tr class="empty-row">
+        <td colspan="4">&#128203; No items match your search or filter.</td>
+      </tr>`;
+  } else {
+    tbody.innerHTML = page.map(item => {
+      const refCell = item.ref
+        ? `<span class="ref-badge">${item.ref}</span>`
+        : `<span class="ref-empty">—</span>`;
+      return `
+        <tr>
+          <td>${refCell}</td>
+          <td>${item.title}</td>
+          <td>${typePill(item.type)}</td>
+          <td class="date-cell">${fmtDate(item.date)}</td>
+        </tr>`;
+    }).join("");
+  }
+
+  // Result info
+  const from = totalItems === 0 ? 0 : start + 1;
+  document.getElementById("resultInfo").textContent =
+    `Showing ${from}–${end} of ${totalItems} item${totalItems !== 1 ? "s" : ""}`;
+
+  // Page info
+  document.getElementById("pageInfo").textContent =
+    `Page ${currentPage} of ${totalPages}`;
+
+  renderPagination(totalPages);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER PAGINATION
+   ═══════════════════════════════════════════════════════════════ */
+function renderPagination(totalPages) {
+  const container = document.getElementById("pageBtns");
+  container.innerHTML = "";
+
+  function btn(label, action, disabled, active, ellipsis) {
+    const b = document.createElement("button");
+    b.className = "page-btn" +
+      (active ? " active" : "") +
+      (ellipsis ? " ellipsis" : "");
+    b.innerHTML  = label;
+    b.disabled   = disabled;
+    if (!disabled && !active && !ellipsis) b.onclick = action;
+    container.appendChild(b);
+  }
+
+  // First / Prev
+  btn("&#171; First", () => goTo(1),            currentPage === 1, false, false);
+  btn("&#8249; Prev",  () => goTo(currentPage - 1), currentPage === 1, false, false);
+
+  // Page number buttons — show at most 7 slots
+  const pages = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (currentPage > 3)          pages.push("…");
+    const lo = Math.max(2, currentPage - 1);
+    const hi = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = lo; i <= hi; i++) pages.push(i);
+    if (currentPage < totalPages - 2) pages.push("…");
+    pages.push(totalPages);
+  }
+
+  pages.forEach(p => {
+    if (p === "…") {
+      btn("…", null, true, false, true);
+    } else {
+      btn(p, () => goTo(p), false, p === currentPage, false);
+    }
+  });
+
+  // Next / Last
+  btn("Next &#8250;",  () => goTo(currentPage + 1), currentPage === totalPages, false, false);
+  btn("Last &#187;",  () => goTo(totalPages),        currentPage === totalPages, false, false);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════════════════ */
+function goTo(page) {
+  currentPage = page;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CLEAR FILTERS
+   ═══════════════════════════════════════════════════════════════ */
+function clearFilters() {
+  document.getElementById("searchInput").value = "";
+  document.getElementById("typeFilter").value  = "";
+  document.getElementById("yearFilter").value  = "";
+  applyFilters();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EVENT LISTENERS
+   ═══════════════════════════════════════════════════════════════ */
+document.getElementById("searchInput").addEventListener("input",  applyFilters);
+document.getElementById("typeFilter").addEventListener("change", applyFilters);
+document.getElementById("yearFilter").addEventListener("change", applyFilters);
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOT
+   ═══════════════════════════════════════════════════════════════ */
+updateSortArrows();
+applyFilters();   // initial render, sorted date desc (newest first)
+</script>
+</body>
+</html>
