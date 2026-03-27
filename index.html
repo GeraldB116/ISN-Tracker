@@ -5,182 +5,405 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Altera ISN Tracker</title>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Segoe UI', Arial, sans-serif;
-  font-size: 14px;
-  background: #f0f4f8;
-  color: #1a1a1a;
-  min-height: 100vh;
-}
-.banner {
-  background: #003087;
-  padding: 0 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 64px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-}
-.banner-left { display: flex; align-items: center; gap: 14px; }
-.banner-icon {
-  width: 38px; height: 38px;
-  background: #005eb8;
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; color: #fff; font-weight: 900;
-  flex-shrink: 0;
-  border: 2px solid rgba(255,255,255,0.25);
-}
-.banner-title { color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: 0.3px; }
-.banner-sub { color: rgba(255,255,255,0.65); font-size: 12px; margin-top: 1px; }
-.banner-right { color: rgba(255,255,255,0.7); font-size: 12px; text-align: right; }
-.banner-accent {
-  height: 4px;
-  background: linear-gradient(90deg, #005eb8 0%, #0072ce 50%, #41b6e6 100%);
-}
-.wrapper { max-width: 1280px; margin: 28px auto; padding: 0 20px; }
-.toolbar {
-  background: #fff;
-  border: 1px solid #d0d7de;
-  border-radius: 10px;
-  padding: 16px 20px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 18px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
-.search-wrap { position: relative; flex: 1; min-width: 220px; }
-.search-icon {
-  position: absolute; left: 11px; top: 50%;
-  transform: translateY(-50%);
-  color: #6b7280; font-size: 15px; pointer-events: none;
-}
-.search-wrap input {
-  width: 100%;
-  padding: 9px 12px 9px 34px;
-  border: 1px solid #d0d7de;
-  border-radius: 7px;
-  font-size: 14px; color: #1a1a1a; background: #fafbfc;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.search-wrap input:focus {
-  border-color: #005eb8;
-  box-shadow: 0 0 0 3px rgba(0,94,184,0.12);
-  background: #fff;
-}
-.search-wrap input::placeholder { color: #9ca3af; }
-.toolbar select {
-  padding: 9px 12px;
-  border: 1px solid #d0d7de;
-  border-radius: 7px;
-  font-size: 14px; color: #1a1a1a; background: #fafbfc;
-  cursor: pointer; outline: none;
-  transition: border-color 0.2s;
-  min-width: 160px;
-}
-.toolbar select:focus { border-color: #005eb8; }
-.btn-clear {
-  padding: 9px 18px;
-  background: #f3f4f6;
-  border: 1px solid #d0d7de;
-  border-radius: 7px;
-  font-size: 13px; color: #374151;
-  cursor: pointer; font-weight: 500;
-  transition: background 0.15s;
-}
-.btn-clear:hover { background: #e5e7eb; }
-.result-info { color: #6b7280; font-size: 13px; white-space: nowrap; margin-left: auto; }
-.card {
-  background: #fff;
-  border: 1px solid #d0d7de;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 700px; }
-thead { background: #003087; }
-thead th {
-  padding: 13px 16px;
-  text-align: left; color: #fff;
-  font-size: 13px; font-weight: 600; letter-spacing: 0.4px;
-  white-space: nowrap; cursor: pointer; user-select: none;
-  transition: background 0.15s;
-}
-thead th:hover { background: #005eb8; }
-thead th .sort-arrow { margin-left: 5px; opacity: 0.55; font-size: 11px; }
-thead th.sorted .sort-arrow { opacity: 1; }
-tbody tr { border-bottom: 1px solid #f0f0f0; transition: background 0.12s; }
-tbody tr:last-child { border-bottom: none; }
-tbody tr:hover { background: #f0f6ff; }
-tbody tr:nth-child(even) { background: #fafbfc; }
-tbody tr:nth-child(even):hover { background: #f0f6ff; }
-td { padding: 12px 16px; font-size: 13.5px; vertical-align: middle; color: #1a1a1a; }
-.ref-badge {
-  display: inline-block;
-  background: #e8f0fe; color: #003087;
-  font-weight: 700; font-size: 12px;
-  padding: 3px 9px; border-radius: 5px;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 0.3px; white-space: nowrap;
-}
-.ref-empty { color: #9ca3af; font-size: 12px; font-style: italic; }
-.title-link {
-  color: #005eb8;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.15s;
-}
-.title-link:hover { color: #003087; text-decoration: underline; }
-.title-link:visited { color: #4c2c92; }
-.pill {
-  display: inline-block; padding: 3px 10px;
-  border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap;
-}
-.pill-standard   { background: #dbeafe; color: #1e40af; }
-.pill-collection { background: #d1fae5; color: #065f46; }
-.pill-both       { background: #ede9fe; color: #5b21b6; }
-.pill-consult    { background: #fef3c7; color: #92400e; }
-.pill-default    { background: #f3f4f6; color: #374151; }
-.date-cell { white-space: nowrap; color: #374151; }
-.empty-row td { text-align: center; padding: 48px 16px; color: #9ca3af; font-size: 15px; }
-.pagination-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 10px;
-  padding: 14px 20px;
-  border-top: 1px solid #f0f0f0; background: #fafbfc;
-}
-.page-info { color: #6b7280; font-size: 13px; }
-.page-btns { display: flex; gap: 4px; flex-wrap: wrap; }
-.page-btn {
-  min-width: 34px; height: 34px; padding: 0 8px;
-  border: 1px solid #d0d7de; border-radius: 6px;
-  background: #fff; color: #374151; font-size: 13px;
-  cursor: pointer; font-weight: 500;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-.page-btn:hover:not(:disabled):not(.active) {
-  background: #f0f6ff; border-color: #005eb8; color: #003087;
-}
-.page-btn.active { background: #003087; color: #fff; border-color: #003087; cursor: default; }
-.page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-.page-btn.ellipsis { border: none; background: none; cursor: default; color: #9ca3af; }
-@media (max-width: 640px) {
-  .banner { padding: 0 16px; min-height: 56px; }
-  .banner-title { font-size: 18px; }
-  .wrapper { margin: 16px auto; padding: 0 12px; }
-  .toolbar { padding: 12px; gap: 8px; }
-  .result-info { margin-left: 0; width: 100%; }
-}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 14px;
+    background: #f0f4f8;
+    color: #1a1a1a;
+    min-height: 100vh;
+  }
+
+  /* ── BANNER ─────────────────────────────────────────────── */
+  .banner {
+    background: linear-gradient(135deg, #003087 0%, #005eb8 100%);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 68px;
+    box-shadow: 0 4px 16px rgba(0,48,135,0.35);
+  }
+  .banner-left  { display: flex; align-items: center; gap: 14px; }
+  .banner-icon  {
+    width: 42px; height: 42px;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #fff; font-weight: 900;
+    flex-shrink: 0;
+  }
+  .banner-title { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: 0.3px; }
+  .banner-sub   { color: rgba(255,255,255,0.65); font-size: 12px; margin-top: 2px; }
+  .banner-right { color: rgba(255,255,255,0.7); font-size: 12px; text-align: right; }
+  .banner-accent {
+    height: 4px;
+    background: linear-gradient(90deg,#41b6e6 0%,#0072ce 50%,#005eb8 100%);
+  }
+
+  /* ── WRAPPER ─────────────────────────────────────────────── */
+  .wrapper { max-width: 1300px; margin: 28px auto; padding: 0 20px; }
+
+  /* ── TOOLBAR ─────────────────────────────────────────────── */
+  .toolbar {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 240px; }
+  .search-icon {
+    position: absolute; left: 12px; top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af; font-size: 16px; pointer-events: none;
+  }
+  .search-wrap input {
+    width: 100%;
+    padding: 10px 12px 10px 38px;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    font-size: 14px; background: #fafbfc;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-wrap input:focus {
+    border-color: #005eb8;
+    box-shadow: 0 0 0 3px rgba(0,94,184,0.12);
+    background: #fff;
+  }
+  .search-wrap input::placeholder { color: #9ca3af; }
+  .toolbar select {
+    padding: 10px 14px;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    font-size: 14px; background: #fafbfc;
+    cursor: pointer; outline: none;
+    min-width: 170px;
+    transition: border-color 0.2s;
+  }
+  .toolbar select:focus { border-color: #005eb8; }
+  .btn-clear {
+    padding: 10px 18px;
+    background: #f3f4f6;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    font-size: 13px; color: #374151;
+    cursor: pointer; font-weight: 500;
+    transition: background 0.15s;
+  }
+  .btn-clear:hover { background: #e5e7eb; }
+  .result-info {
+    color: #6b7280; font-size: 13px;
+    white-space: nowrap; margin-left: auto;
+    font-weight: 500;
+  }
+
+  /* ── TABLE CARD ──────────────────────────────────────────── */
+  .card {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 720px; }
+
+  thead { background: #003087; }
+  thead th {
+    padding: 14px 18px;
+    text-align: left; color: #fff;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.4px;
+    white-space: nowrap; cursor: pointer; user-select: none;
+    transition: background 0.15s;
+  }
+  thead th:hover    { background: #005eb8; }
+  thead th .arr     { margin-left: 5px; opacity: 0.5; font-size: 11px; }
+  thead th.sorted .arr { opacity: 1; }
+
+  tbody tr {
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover      { background: #eef4ff; }
+  tbody tr:nth-child(even) { background: #fafbfc; }
+  tbody tr:nth-child(even):hover { background: #eef4ff; }
+  tbody tr.selected   { background: #dbeafe !important; }
+
+  td {
+    padding: 13px 18px;
+    font-size: 13.5px;
+    vertical-align: middle;
+  }
+
+  .ref-badge {
+    display: inline-block;
+    background: #e8f0fe; color: #003087;
+    font-weight: 700; font-size: 11.5px;
+    padding: 3px 9px; border-radius: 5px;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.3px; white-space: nowrap;
+  }
+  .ref-empty { color: #9ca3af; font-size: 12px; font-style: italic; }
+
+  .title-cell { line-height: 1.4; }
+  .title-name { font-weight: 500; color: #1a1a1a; }
+  .ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: linear-gradient(135deg,#dbeafe,#ede9fe);
+    color: #3730a3;
+    font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 20px;
+    margin-left: 7px;
+    letter-spacing: 0.3px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .pill {
+    display: inline-block; padding: 4px 11px;
+    border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .pill-standard   { background: #dbeafe; color: #1e40af; }
+  .pill-collection { background: #d1fae5; color: #065f46; }
+  .pill-both       { background: #ede9fe; color: #5b21b6; }
+  .pill-consult    { background: #fef3c7; color: #92400e; }
+  .pill-default    { background: #f3f4f6; color: #374151; }
+
+  .date-cell { white-space: nowrap; color: #374151; font-size: 13px; }
+  .empty-row td {
+    text-align: center; padding: 56px 16px;
+    color: #9ca3af; font-size: 15px;
+  }
+
+  .hint-bar {
+    display: flex; align-items: center; justify-content: center;
+    gap: 6px;
+    font-size: 12px; color: #6b7280;
+    padding: 9px 16px;
+    background: linear-gradient(90deg,#f8fafc,#f0f6ff,#f8fafc);
+    border-top: 1px solid #e5e7eb;
+  }
+
+  /* ── PAGINATION ──────────────────────────────────────────── */
+  .pager {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid #f0f0f0; background: #fafbfc;
+  }
+  .page-info { color: #6b7280; font-size: 13px; }
+  .page-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pbtn {
+    min-width: 34px; height: 34px; padding: 0 10px;
+    border: 1px solid #d0d7de; border-radius: 7px;
+    background: #fff; color: #374151; font-size: 13px;
+    cursor: pointer; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .pbtn:hover:not(:disabled):not(.active) {
+    background: #eef4ff; border-color: #005eb8; color: #003087;
+  }
+  .pbtn.active  { background:#003087; color:#fff; border-color:#003087; cursor:default; }
+  .pbtn:disabled { opacity:.35; cursor:not-allowed; }
+  .pbtn.dots    { border:none; background:none; cursor:default; color:#9ca3af; }
+
+  /* ── OVERLAY ─────────────────────────────────────────────── */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .overlay.open { opacity: 1; pointer-events: all; }
+
+  /* ── DETAIL PANEL ────────────────────────────────────────── */
+  .panel {
+    position: fixed;
+    top: 0; right: -580px;
+    width: 560px; max-width: 97vw;
+    height: 100%;
+    background: #fff;
+    z-index: 201;
+    box-shadow: -8px 0 40px rgba(0,0,0,0.18);
+    transition: right 0.32s cubic-bezier(0.4,0,0.2,1);
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .panel.open { right: 0; }
+
+  /* Panel header */
+  .p-head {
+    background: linear-gradient(135deg,#003087 0%,#005eb8 100%);
+    padding: 18px 22px;
+    display: flex; align-items: flex-start;
+    justify-content: space-between; gap: 14px;
+    position: sticky; top: 0; z-index: 1;
+    flex-shrink: 0;
+  }
+  .p-head-left  { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .p-ref-chip   {
+    display: inline-flex; align-items: center;
+    background: rgba(255,255,255,0.18);
+    color: #fff;
+    font-weight: 700; font-size: 13px;
+    padding: 4px 12px; border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.4px;
+    border: 1px solid rgba(255,255,255,0.25);
+    align-self: flex-start;
+  }
+  .p-head-title {
+    color: #fff;
+    font-size: 16px; font-weight: 700;
+    line-height: 1.4;
+  }
+  .p-close {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff;
+    width: 34px; height: 34px;
+    border-radius: 50%; cursor: pointer;
+    font-size: 16px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .p-close:hover { background: rgba(255,255,255,0.3); }
+
+  /* Panel body */
+  .p-body {
+    padding: 22px;
+    flex: 1;
+    display: flex; flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Meta chips row */
+  .p-meta {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .p-date-chip {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 4px 11px;
+    font-size: 12px; color: #475569; font-weight: 500;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  .p-divider { border: none; border-top: 1px solid #e5e7eb; }
+
+  /* Section boxes */
+  .p-box {
+    border-radius: 12px;
+    padding: 16px 18px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+  }
+  .p-box-label {
+    font-size: 10.5px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 1px;
+    color: #6b7280;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* AI summary box */
+  .p-box.ai {
+    background: linear-gradient(135deg,#eff6ff 0%,#faf5ff 100%);
+    border-color: #bfdbfe;
+  }
+  .p-box.ai .p-box-label { color: #2563eb; }
+  .ai-label-badge {
+    background: linear-gradient(135deg,#3b82f6,#8b5cf6);
+    color: #fff;
+    font-size: 9px; font-weight: 800;
+    padding: 2px 7px; border-radius: 10px;
+    letter-spacing: 0.5px;
+  }
+  .ai-summary-text {
+    font-size: 14px; line-height: 1.8; color: #374151;
+  }
+  .ai-no-summary {
+    font-size: 13px; color: #9ca3af; font-style: italic; line-height: 1.6;
+  }
+  .ai-footer {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 12px;
+    font-size: 11px; color: #6b7280;
+    padding-top: 10px;
+    border-top: 1px solid #e0eaff;
+  }
+
+  /* Link button */
+  .p-link-btn {
+    display: flex;
+    align-items: center; justify-content: center;
+    gap: 10px;
+    background: #005eb8; color: #fff;
+    text-decoration: none;
+    padding: 15px 20px;
+    border-radius: 10px;
+    font-size: 15px; font-weight: 600;
+    transition: background 0.15s, transform 0.12s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(0,94,184,0.25);
+  }
+  .p-link-btn:hover {
+    background: #003087;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,48,135,0.3);
+  }
+  .p-link-arrow { font-size: 18px; }
+
+  /* Documents box */
+  .p-box.docs {
+    background: #fffbeb;
+    border-color: #fde68a;
+  }
+  .p-box.docs .p-box-label { color: #b45309; }
+  .docs-text { font-size: 13px; color: #78350f; line-height: 1.7; }
+  .docs-text strong { color: #92400e; }
+
+  /* Panel footer */
+  .p-foot {
+    padding: 14px 22px;
+    background: #f8fafc;
+    border-top: 1px solid #e5e7eb;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 11px; color: #9ca3af;
+  }
+
+  /* ── RESPONSIVE ──────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    .banner    { padding: 0 16px; min-height: 60px; }
+    .banner-title { font-size: 18px; }
+    .wrapper   { margin: 16px auto; padding: 0 12px; }
+    .toolbar   { padding: 12px; gap: 8px; }
+    .result-info { margin-left: 0; width: 100%; }
+    .panel     { width: 100%; right: -100vw; }
+    .panel.open { right: 0; }
+  }
 </style>
 </head>
+
 <body>
 
+<!-- ── BANNER ────────────────────────────────────────────────── -->
 <header>
   <div class="banner">
     <div class="banner-left">
@@ -197,14 +420,16 @@ td { padding: 12px 16px; font-size: 13.5px; vertical-align: middle; color: #1a1a
   <div class="banner-accent"></div>
 </header>
 
+<!-- ── MAIN ──────────────────────────────────────────────────── -->
 <div class="wrapper">
 
+  <!-- Toolbar -->
   <div class="toolbar">
     <div class="search-wrap">
       <span class="search-icon">&#128269;</span>
       <input type="text" id="searchInput"
-        placeholder="Search by reference, title or type..."
-        autocomplete="off" />
+             placeholder="Search reference, title or type..."
+             autocomplete="off" />
     </div>
     <select id="typeFilter">
       <option value="">All Types</option>
@@ -223,91 +448,440 @@ td { padding: 12px 16px; font-size: 13.5px; vertical-align: middle; color: #1a1a
     <span class="result-info" id="resultInfo">Showing 0 items</span>
   </div>
 
+  <!-- Table card -->
   <div class="card">
     <div class="table-wrap">
-      <table id="mainTable">
+      <table>
         <thead>
           <tr>
             <th onclick="sortBy('ref')"   id="th-ref">
-              Reference <span class="sort-arrow" id="arr-ref">&#8597;</span>
+              Reference <span class="arr" id="arr-ref">&#8597;</span>
             </th>
             <th onclick="sortBy('title')" id="th-title">
-              Title <span class="sort-arrow" id="arr-title">&#8597;</span>
+              Title <span class="arr" id="arr-title">&#8597;</span>
             </th>
             <th onclick="sortBy('type')"  id="th-type">
-              Type <span class="sort-arrow" id="arr-type">&#8597;</span>
+              Type <span class="arr" id="arr-type">&#8597;</span>
             </th>
             <th onclick="sortBy('date')"  id="th-date">
-              Date <span class="sort-arrow" id="arr-date">&#8597;</span>
+              Date <span class="arr" id="arr-date">&#8597;</span>
             </th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
       </table>
     </div>
-    <div class="pagination-bar">
+
+    <div class="hint-bar">
+      &#128161; Click any row to view details and AI-generated summary
+    </div>
+
+    <div class="pager">
       <span class="page-info" id="pageInfo">Page 1 of 1</span>
       <div class="page-btns" id="pageBtns"></div>
     </div>
   </div>
 
-</div>
+</div><!-- /wrapper -->
+
+<!-- ── OVERLAY ───────────────────────────────────────────────── -->
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+
+<!-- ── DETAIL PANEL ──────────────────────────────────────────── -->
+<div class="panel" id="panel">
+
+  <!-- Header -->
+  <div class="p-head">
+    <div class="p-head-left">
+      <span class="p-ref-chip" id="pRef">DAPB0000</span>
+      <div class="p-head-title" id="pHeadTitle"></div>
+    </div>
+    <button class="p-close" onclick="closePanel()" title="Close panel">&#10005;</button>
+  </div>
+
+  <!-- Body -->
+  <div class="p-body">
+
+    <!-- Meta chips -->
+    <div class="p-meta" id="pMeta"></div>
+
+    <hr class="p-divider" />
+
+    <!-- AI Summary -->
+    <div class="p-box ai">
+      <div class="p-box-label">
+        &#129302;&nbsp; AI Summary
+        <span class="ai-label-badge">GPT-4o-mini</span>
+      </div>
+      <div id="pSummary" class="ai-summary-text"></div>
+      <div class="ai-footer">
+        &#9432;&nbsp; Summary generated by OpenAI. Always verify against the official NHS Digital page.
+      </div>
+    </div>
+
+    <hr class="p-divider" />
+
+    <!-- NHS Link -->
+    <div>
+      <div class="p-box-label">
+        &#127760;&nbsp; Official NHS Digital Page
+      </div>
+      <a id="pLink" href="#" target="_blank" rel="noopener noreferrer"
+         class="p-link-btn">
+        &#128196;&nbsp; Open on NHS Digital
+        <span class="p-link-arrow">&#8599;</span>
+      </a>
+    </div>
+
+    <!-- Documents -->
+    <div class="p-box docs">
+      <div class="p-box-label">
+        &#128196;&nbsp; Documents &amp; Attachments
+      </div>
+      <div class="docs-text">
+        Specification documents, implementation guides, technical
+        specifications and PDF attachments for this standard are all
+        available on the NHS Digital page linked above.<br /><br />
+        Click <strong>Open on NHS Digital</strong> above to access the
+        full standard including all associated downloads, change notices
+        and guidance materials.
+      </div>
+    </div>
+
+  </div><!-- /p-body -->
+
+  <div class="p-foot">
+    &#169; NHS England &mdash; Published under the Open Government Licence v3.0
+  </div>
+
+</div><!-- /panel -->
 
 <script>
+
+/* ═══════════════════════════════════════════════════════════════
+   DATA
+   Each item has: ref, title, type, status, date, link, summary
+   Summaries are placeholder text — will be replaced by OpenAI
+   when the scraper is connected.
+═══════════════════════════════════════════════════════════════ */
 const DATA = [
-  { ref:"DAPB4073",      title:"Virtual Wards (Hospital at Home)",                                                                        type:"Collection",            status:"Approved", date:"2026-01-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4073-virtual-wards" },
-  { ref:"DAPB3051",      title:"Identity Verification and Authentication Standard for Digital Health and Care Services (Proxy standard)",  type:"Standard",              status:"Approved", date:"2025-12-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb3051-identity-verification-and-authentication-standard-for-digital-health-and-care-services" },
-  { ref:"DAPB0089",      title:"Cover of Vaccination Evaluated Rapidly (COVER)",                                                          type:"Standard & Collection", status:"Approved", date:"2025-10-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb0089-cover-of-vaccination-evaluated-rapidly-cover" },
-  { ref:"DAPB4019",      title:"Reasonable Adjustment Digital Flag (RADF)",                                                               type:"Standard",              status:"Approved", date:"2025-10-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4019-reasonable-adjustment-digital-flag" },
-  { ref:"DAPB0084",      title:"OPCS 4.11",                                                                                               type:"Standard",              status:"Approved", date:"2025-10-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb0084-opcs-classification-of-interventions-and-procedures" },
-  { ref:"DAPB1577",      title:"Diagnostic Imaging Set (DIDS) v2",                                                                        type:"Standard & Collection", status:"Approved", date:"2025-10-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1577-diagnostic-imaging-data-set" },
-  { ref:"DAPB4067",      title:"National Maternity Operational Pressures Situation Report (SitRep)",                                      type:"Collection",            status:"Approved", date:"2025-09-01", link:"https://future.nhs.uk/system/login?nextURL=%2Fconnect%2Eti%2FLocalTransformationHub%2Fview%3FobjectID%3D66746736" },
-  { ref:"DAPB0086",      title:"Data Security and Protection Toolkit v8",                                                                 type:"Standard",              status:"Approved", date:"2025-07-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb0086-data-security-and-protection-toolkit" },
-  { ref:"DAPB2054-4026", title:"Friends and Family Test: Post-COVID Assessment Clinics Retired",                                          type:"Collection",            status:"Approved", date:"2025-07-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/standards-and-collections---withdrawn" },
-  { ref:"DAPB2054-3144", title:"Friends and Family Test: Quarterly Staff Survey",                                                         type:"Collection",            status:"Approved", date:"2025-07-01", link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/national-quarterly-pulse-survey-collection" },
-  { ref:"DAPB2090-2171", title:"GPES: Learning Disabilities Data (LDD) 2024-25",                                                         type:"Collection",            status:"Approved", date:"2025-07-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections" },
-  { ref:"DAPB3042",      title:"Resident Doctors (RDs): Rota Code of Practice Compliance",                                               type:"Collection",            status:"Approved", date:"2025-07-01", link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/resident-doctors-rota-code-of-practice-compliance-data-collection" },
-  { ref:"DAPB1605",      title:"Accessible Information",                                                                                  type:"Standard",              status:"Approved", date:"2025-06-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1605-accessible-information" },
-  { ref:"DAPB2235-01",   title:"GPES: National Diabetes Audit (Core)",                                                                    type:"Collection",            status:"Approved", date:"2025-06-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections" },
-  { ref:"DAPB4122",      title:"Oliver McGowan Training",                                                                                 type:"Collection",            status:"Approved", date:"2025-06-01", link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/oliver-mcgowan-mandatory-training-on-learning-disability-and-autism" },
-  { ref:"DAPB1533",      title:"Systemic Anti-Cancer Therapy Data Set",                                                                   type:"Standard",              status:"Approved", date:"2025-06-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1533-systemic-anti-cancer-therapy-data-set-sact" },
-  { ref:"DAPB4121",      title:"Canonical Data Model (Draft)",                                                                            type:"Standard",              status:"Approved", date:"2025-06-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4121-canonical-data-model-cdm" },
-  { ref:"DAPB3139",      title:"Mental Health, Learning Disability, Autism (MHLDA) Sit Reps",                                            type:"Collection",            status:"Approved", date:"2025-05-01", link:"https://digital.nhs.uk/about-nhs-digital/corporate-information-and-documents/directions-and-data-provision-notices/data-provision-notices-dpns/covid-19-sitreps/covid-19-situation-reports" },
-  { ref:"DAPB1521",      title:"Cancer Outcomes and Services Data set (COSD)",                                                            type:"Standard",              status:"Approved", date:"2025-05-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1521-cancer-outcomes-and-services-data-set" },
-  { ref:"DAPB2090-3038", title:"GPES: Physical Health Checks for people with Severe Mental Illness (PHSMI)",                             type:"Standard",              status:"Approved", date:"2025-05-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections" },
-  { ref:"DAPB2090-2183", title:"GPES: Quality and Outcomes Framework (QOF)",                                                             type:"Collection",            status:"Approved", date:"2025-05-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections" },
-  { ref:"DAPB4003",      title:"Board Vacancies and Commercial Spend",                                                                    type:"Collection",            status:"Approved", date:"2025-05-01", link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/board-vacancies-and-commercial-spend-collection" },
-  { ref:"DAPB0095",      title:"Referral to Treatment",                                                                                   type:"Collection",            status:"Approved", date:"2025-05-01", link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/consultant-led-referral-to-treatment-waiting-times-rtt" },
-  { ref:"DAPB3009",      title:"Healthy Child Programme Information Standard",                                                            type:"Standard",              status:"Approved", date:"2025-04-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb3009-healthy-child-programme" },
-  { ref:"DAPB4000",      title:"Patient Level Information and Costing System (PLICS) 24/25",                                             type:"Standard",              status:"Approved", date:"2025-04-01", link:"http://www.england.nhs.uk/costing-in-the-nhs/approved-costing-guidance/" },
-  { ref:"DAPB2090-3141", title:"GPES: Childhood Immunisations Hexavalent (6-in-1) Vaccination",                                         type:"Collection",            status:"Approved", date:"2025-04-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections" },
-  { ref:"DAPB2179",      title:"GPES: Measles, Mumps, Rubella (MMR) Vaccination",                                                        type:"Collection",            status:"Approved", date:"2025-04-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections" },
-  { ref:"DAPB2090-3114", title:"GPES: COVID-19 At Risk Patients",                                                                        type:"Collection",            status:"Approved", date:"2025-04-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections" },
-  { ref:"DAPB2090-4087", title:"GPES: COVID-19 At Risk Patients Detained Estate",                                                        type:"Collection",            status:"Approved", date:"2025-04-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections" },
-  { ref:"DAPB4108",      title:"Digital Maturity Assessment (DMA)",                                                                       type:"Collection",            status:"Approved", date:"2025-04-01", link:"http://www.england.nhs.uk/digitaltechnology/connecteddigitalsystems/digital-maturity-assessment/" },
-  { ref:"DAPB4119",      title:"Perinatal Pathology Data Set",                                                                            type:"Collection",            status:"Approved", date:"2025-04-01", link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/perinatal-pathology" },
-  { ref:"DAPB3085",      title:"All Age Continuing Care Data Set",                                                                        type:"Standard",              status:"Approved", date:"2025-04-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb3085-all-age-continuing-care-data-set" },
-  { ref:"DAPB2090-4084", title:"GPES: Network Contract Direct Enhanced Services (NCD)",                                                  type:"Collection",            status:"Approved", date:"2025-03-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections" },
-  { ref:"DAPB3031",      title:"Integrated Urgent Care Aggregate Data Collection (IUCADC)",                                              type:"Collection",            status:"Approved", date:"2025-03-01", link:"http://www.england.nhs.uk/statistics/statistical-work-areas/iucadc-new-from-april-2021/integrated-urgent-care-aggregate-data-collection-iucadc-including-nhs111-statistics-apr-2024-mar-2025/" },
-  { ref:"DAPB2090-3010", title:"GPES: GMS Core Contract",                                                                                type:"Collection",            status:"Approved", date:"2025-03-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections" },
-  { ref:"DAPB2083",      title:"Estates Return Information Collection (ERIC)",                                                            type:"Collection",            status:"Approved", date:"2025-03-01", link:"https://digital.nhs.uk/data-and-information/areas-of-interest/estates-and-facilities/estates-and-facilities-management-information-system" },
-  { ref:"DAPB2050",      title:"Aggregate Contract Monitoring",                                                                           type:"Standard",              status:"Approved", date:"2025-01-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/contract-monitoring" },
-  { ref:"DAPB2212",      title:"Drugs Patient Level Contract Monitoring",                                                                 type:"Standard",              status:"Approved", date:"2025-01-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/contract-monitoring" },
-  { ref:"DAPB3002",      title:"Patient Level Contract Monitoring",                                                                       type:"Standard",              status:"Approved", date:"2025-01-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/contract-monitoring" },
-  { ref:"DAPB3003",      title:"Devices Patient Level Contract Monitoring",                                                               type:"Collection",            status:"Approved", date:"2025-01-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/contract-monitoring" },
-  { ref:"DAPB3103",      title:"Medical Devices Outcomes Registry",                                                                       type:"Collection",            status:"Approved", date:"2024-12-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb3103-medical-devices-outcomes-registry" },
-  { ref:"DAPB2235",      title:"National Diabetes Audit",                                                                                 type:"Collection",            status:"Approved", date:"2024-12-01", link:"https://digital.nhs.uk/data-and-information/clinical-audits-and-registries/national-diabetes-audit" },
-  { ref:"DAPB4115",      title:"Theatre Estate Register",                                                                                 type:"Collection",            status:"Approved", date:"2024-12-01", link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/theatre-estates" },
-  { ref:"DAPB1069",      title:"Child Protection Information Sharing",                                                                    type:"Standard",              status:"Approved", date:"2024-10-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1609-child-protection-information-sharing" },
-  { ref:"DAPB1067",      title:"National Workforce Dataset (NWD)",                                                                        type:"Standard",              status:"Approved", date:"2024-08-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1067-national-workforce-data-set" },
-  { ref:"DAPB4109",      title:"Intermediate Care Data Collection",                                                                       type:"Collection",            status:"Approved", date:"2024-07-01", link:"http://www.england.nhs.uk/publication/covid-19-eprr-acute-and-community-daily-discharge-situation-reports-sitreps/" },
-  { ref:"DAPB4094",      title:"Healthcare Operational Data Flows: Acute Information Standard",                                           type:"Standard",              status:"Approved", date:"2024-06-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4094-healthcare-operational-data-flows-acute-information-standard" },
-  { ref:"DAPB4005",      title:"Secondary Care Electronic Prescribing and Medicines Administration (ePMA) Data Collection",              type:"Standard",              status:"Approved", date:"2024-05-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4005-secondary-care-electronic-prescribing-and-medicines-administration-epma-data-collection" },
-  { ref:"DAPB0092-2062", title:"Emergency Care Data Set v4",                                                                              type:"Collection",            status:"Approved", date:"2024-05-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb0092-2062-commissioning-data-sets-emergency-care-data-set" },
-  { ref:"ISB1594",       title:"Information Sharing to Tackle Violence (ISTV) Minimum Data Set",                                         type:"Collection",            status:"Approved", date:"2024-05-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/isb1594-information-sharing-to-tackle-violence-minimum-dataset" },
-  { ref:"DAPB4101",      title:"Pathology and Laboratory Medicine Reporting Information Standard",                                        type:"Standard",              status:"Approved", date:"2024-03-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4101-pathology-and-laboratory-medicine-reporting-information-standard" },
-  { ref:"DAPB4102",      title:"Adult Social Care Digital Social Care Record (DSCR): Minimum Operational Data Specification",           type:"Standard",              status:"Approved", date:"2024-03-01", link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4102-adult-social-care-record-minimum-operational-data-standard" }
+  {
+    ref:"DAPB4073", title:"Virtual Wards (Hospital at Home)",
+    type:"Collection", status:"Approved", date:"2026-01-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4073-virtual-wards",
+    summary:"This standard defines the data collection requirements for Virtual Wards, enabling NHS organisations to monitor patients at home using technology that would otherwise require hospital admission. It applies to all acute trusts and integrated care systems operating virtual ward programmes. The standard supports the NHS ambition to deliver 40-50 virtual ward beds per 100,000 population."
+  },
+  {
+    ref:"DAPB3051", title:"Identity Verification and Authentication Standard for Digital Health and Care Services (Proxy standard)",
+    type:"Standard", status:"Approved", date:"2025-12-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb3051-identity-verification-and-authentication-standard-for-digital-health-and-care-services",
+    summary:"This standard sets the requirements for verifying and authenticating the identity of individuals accessing digital health and care services, including proxy access on behalf of others such as carers or parents. It applies to all NHS and social care organisations providing digital access to health services. It ensures patients can safely access their records and services while preventing unauthorised access."
+  },
+  {
+    ref:"DAPB0089", title:"Cover of Vaccination Evaluated Rapidly (COVER)",
+    type:"Standard & Collection", status:"Approved", date:"2025-10-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb0089-cover-of-vaccination-evaluated-rapidly-cover",
+    summary:"COVER collects data on childhood vaccination uptake rates across England, enabling NHS England and UKHSA to monitor immunisation programme performance and identify areas with low uptake. It applies to all GP practices and NHS providers delivering childhood vaccinations. The data directly informs public health policy and targeted interventions to improve vaccination coverage."
+  },
+  {
+    ref:"DAPB4019", title:"Reasonable Adjustment Digital Flag (RADF)",
+    type:"Standard", status:"Approved", date:"2025-10-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4019-reasonable-adjustment-digital-flag",
+    summary:"The Reasonable Adjustment Digital Flag enables health and care organisations to record and share information about the reasonable adjustments a patient needs, such as easy-read documents or longer appointment times, across different care settings. It applies to all NHS trusts and primary care providers and supports compliance with the Equality Act 2010. The flag ensures patients with disabilities or learning differences receive appropriate adjustments wherever they access care."
+  },
+  {
+    ref:"DAPB0084", title:"OPCS 4.11",
+    type:"Standard", status:"Approved", date:"2025-10-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb0084-opcs-classification-of-interventions-and-procedures",
+    summary:"OPCS-4.11 is the latest update to the national classification system for surgical operations and procedures performed in NHS hospitals, ensuring consistent coding across all providers. It applies to all NHS trusts submitting clinical coding data including Hospital Episode Statistics. Accurate OPCS coding underpins commissioning, performance monitoring, research, and clinical audit across the NHS."
+  },
+  {
+    ref:"DAPB1577", title:"Diagnostic Imaging Set (DIDS) v2",
+    type:"Standard & Collection", status:"Approved", date:"2025-10-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1577-diagnostic-imaging-data-set",
+    summary:"DIDS v2 defines the data set for collecting information about diagnostic imaging activity including X-rays, CT scans, MRI and ultrasound across NHS England. It applies to all NHS providers with imaging departments and independent sector providers delivering NHS imaging services. The data supports capacity planning, waiting time monitoring and clinical quality improvement in radiology services."
+  },
+  {
+    ref:"DAPB4067", title:"National Maternity Operational Pressures Situation Report (SitRep)",
+    type:"Collection", status:"Approved", date:"2025-09-01",
+    link:"https://future.nhs.uk/system/login?nextURL=%2Fconnect%2Eti%2FLocalTransformationHub%2Fview%3FobjectID%3D66746736",
+    summary:"This collection gathers real-time data on operational pressures within NHS maternity services, enabling NHS England to monitor staffing levels, caseloads and safety incidents across maternity units. It applies to all NHS trusts providing maternity services in England. The data supports national oversight and targeted support to services experiencing significant pressures."
+  },
+  {
+    ref:"DAPB0086", title:"Data Security and Protection Toolkit v8",
+    type:"Standard", status:"Approved", date:"2025-07-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb0086-data-security-and-protection-toolkit",
+    summary:"The DSP Toolkit is the mandatory self-assessment framework that all organisations accessing NHS patient data and systems must complete annually to demonstrate compliance with data security and information governance standards. It applies to NHS trusts, GP practices, local authorities and third-party suppliers with access to NHS data. Completion is required to maintain access to NHS networks and systems including NHSmail and the NHS Spine."
+  },
+  {
+    ref:"DAPB2054-4026", title:"Friends and Family Test: Post-COVID Assessment Clinics Retired",
+    type:"Collection", status:"Approved", date:"2025-07-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/standards-and-collections---withdrawn",
+    summary:"This collection, which gathered patient experience data from Post-COVID Assessment Clinics using the Friends and Family Test, has been formally retired. The retirement reflects the winding down of dedicated post-COVID clinic services as these have been integrated into mainstream NHS pathways. Organisations previously submitting under this collection should cease data submissions."
+  },
+  {
+    ref:"DAPB2054-3144", title:"Friends and Family Test: Quarterly Staff Survey",
+    type:"Collection", status:"Approved", date:"2025-07-01",
+    link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/national-quarterly-pulse-survey-collection",
+    summary:"This collection captures quarterly Friends and Family Test data from NHS staff, providing insights into workforce wellbeing and whether staff would recommend their organisation as a place to work or receive treatment. It applies to all NHS trusts and foundation trusts in England. The data supports NHS England's people strategy and is used to benchmark staff experience across organisations."
+  },
+  {
+    ref:"DAPB2090-2171", title:"GPES: Learning Disabilities Data (LDD) 2024-25",
+    type:"Collection", status:"Approved", date:"2025-07-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections",
+    summary:"This GPES collection gathers data from GP systems on the identification, health checks and care planning for patients with learning disabilities in 2024-25. It applies to all GP practices in England participating in the Learning Disabilities health check programme. The data supports NHS England in monitoring the uptake of Annual Health Checks for people with learning disabilities and reducing health inequalities in this population."
+  },
+  {
+    ref:"DAPB3042", title:"Resident Doctors (RDs): Rota Code of Practice Compliance",
+    type:"Collection", status:"Approved", date:"2025-07-01",
+    link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/resident-doctors-rota-code-of-practice-compliance-data-collection",
+    summary:"This data collection monitors NHS trusts' compliance with the Resident Doctors Rota Code of Practice, which sets out standards for safe working hours and rota design for junior doctors. It applies to all NHS employers of resident doctors in England. The data supports NHS England in identifying trusts with compliance issues and protecting the wellbeing and safety of resident doctors."
+  },
+  {
+    ref:"DAPB1605", title:"Accessible Information",
+    type:"Standard", status:"Approved", date:"2025-06-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1605-accessible-information",
+    summary:"The Accessible Information Standard requires all NHS and adult social care organisations to identify, record, flag, share and meet the communication and information needs of patients with a disability, impairment or sensory loss. It applies to all publicly-funded health and care providers in England including GP practices, hospitals and care homes. Compliance is mandatory under the Health and Social Care Act 2012 and ensures equitable access to health information for all patients."
+  },
+  {
+    ref:"DAPB2235-01", title:"GPES: National Diabetes Audit (Core)",
+    type:"Collection", status:"Approved", date:"2025-06-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections",
+    summary:"This collection extracts core clinical data from GP systems to support the National Diabetes Audit, measuring the quality of diabetes care delivered in primary care settings against NICE guidelines. It applies to all GP practices in England with registered patients who have a diagnosis of Type 1 or Type 2 diabetes. The data enables benchmarking of diabetes care quality and identification of variation to drive improvement."
+  },
+  {
+    ref:"DAPB4122", title:"Oliver McGowan Training",
+    type:"Collection", status:"Approved", date:"2025-06-01",
+    link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/oliver-mcgowan-mandatory-training-on-learning-disability-and-autism",
+    summary:"This collection monitors the uptake and completion of Oliver McGowan Mandatory Training on Learning Disability and Autism across health and social care organisations. It applies to all NHS trusts and social care providers required to ensure staff complete this mandatory training. The data supports NHS England in tracking progress towards full compliance with this legal training requirement introduced following the tragic death of Oliver McGowan."
+  },
+  {
+    ref:"DAPB1533", title:"Systemic Anti-Cancer Therapy Data Set",
+    type:"Standard", status:"Approved", date:"2025-06-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1533-systemic-anti-cancer-therapy-data-set-sact",
+    summary:"SACT collects data on all chemotherapy and other systemic anti-cancer treatments given to patients in the NHS in England, enabling monitoring of treatment patterns, outcomes and safety across cancer services. It applies to all NHS trusts and independent sector providers delivering SACT. The data underpins the NHS Cancer Programme, supporting quality improvement, commissioning decisions and national research into cancer treatment effectiveness."
+  },
+  {
+    ref:"DAPB4121", title:"Canonical Data Model (Draft)",
+    type:"Standard", status:"Approved", date:"2025-06-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4121-canonical-data-model-cdm",
+    summary:"The Canonical Data Model defines a standardised set of data structures and terminology for health and care data in England, providing a common language that enables different systems to exchange information consistently. It applies to all NHS digital system suppliers and data architects building solutions for the NHS. The CDM is a foundational component of the NHS England federated data platform and wider data infrastructure strategy."
+  },
+  {
+    ref:"DAPB3139", title:"Mental Health, Learning Disability, Autism (MHLDA) Sit Reps",
+    type:"Collection", status:"Approved", date:"2025-05-01",
+    link:"https://digital.nhs.uk/about-nhs-digital/corporate-information-and-documents/directions-and-data-provision-notices/data-provision-notices-dpns/covid-19-sitreps/covid-19-situation-reports",
+    summary:"This collection gathers regular situational reports on capacity, occupancy, delayed discharges and out-of-area placements across mental health, learning disability and autism inpatient services. It applies to all NHS providers of MHLDA inpatient services in England. The data provides NHS England with real-time operational oversight to manage pressures and reduce the number of patients placed out of their local area."
+  },
+  {
+    ref:"DAPB1521", title:"Cancer Outcomes and Services Data set (COSD)",
+    type:"Standard", status:"Approved", date:"2025-05-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1521-cancer-outcomes-and-services-data-set",
+    summary:"COSD is the national standard for collecting comprehensive data on all cancer diagnoses, treatments and outcomes across NHS England, replacing multiple previous cancer data sets with a single unified submission. It applies to all NHS trusts treating cancer patients, including acute trusts, specialist cancer centres and community providers. COSD data underpins the National Cancer Registration and Analysis Service and is used to monitor the NHS Long Term Plan cancer ambitions."
+  },
+  {
+    ref:"DAPB2090-3038", title:"GPES: Physical Health Checks for people with Severe Mental Illness (PHSMI)",
+    type:"Standard", status:"Approved", date:"2025-05-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections",
+    summary:"This collection extracts data from GP systems to monitor the delivery of annual physical health checks to patients with severe mental illness, addressing the significant physical health inequalities experienced by this group. It applies to all GP practices in England with registered patients who have a diagnosis of severe mental illness. The data supports the NHS commitment to close the 15-20 year life expectancy gap between people with severe mental illness and the general population."
+  },
+  {
+    ref:"DAPB2090-2183", title:"GPES: Quality and Outcomes Framework (QOF)",
+    type:"Collection", status:"Approved", date:"2025-05-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections",
+    summary:"The QOF collection extracts clinical achievement data from GP systems to calculate performance against the Quality and Outcomes Framework, the national pay-for-performance scheme for GP practices in England. It applies to all NHS GP practices participating in QOF. The data determines practice income based on achievement of clinical and organisational indicators and supports monitoring of primary care quality nationally."
+  },
+  {
+    ref:"DAPB4003", title:"Board Vacancies and Commercial Spend",
+    type:"Collection", status:"Approved", date:"2025-05-01",
+    link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/board-vacancies-and-commercial-spend-collection",
+    summary:"This collection gathers data from NHS organisations on board-level executive vacancies and expenditure on management consultancy and other commercial services, supporting NHS England's oversight of governance and financial management. It applies to all NHS trusts, foundation trusts and integrated care boards. The data enables identification of organisations with leadership gaps and scrutiny of commercial spending against NHS efficiency requirements."
+  },
+  {
+    ref:"DAPB0095", title:"Referral to Treatment",
+    type:"Collection", status:"Approved", date:"2025-05-01",
+    link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/consultant-led-referral-to-treatment-waiting-times-rtt",
+    summary:"The RTT collection captures data on waiting times from GP or other referral to the start of consultant-led treatment, enabling NHS England to monitor performance against the 18-week RTT standard. It applies to all NHS trusts and independent sector providers delivering NHS consultant-led treatment. RTT data is one of the most high-profile NHS performance metrics, directly monitored by NHS England, DHSC and Parliament."
+  },
+  {
+    ref:"DAPB3009", title:"Healthy Child Programme Information Standard",
+    type:"Standard", status:"Approved", date:"2025-04-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb3009-healthy-child-programme",
+    summary:"This standard defines the data and information requirements for the Healthy Child Programme, the universal preventative service for children from pregnancy to age 19 covering health checks, immunisations and developmental screening. It applies to NHS trusts providing health visiting and school nursing services and local authorities commissioning child health programmes. The standard supports the collection of consistent data to monitor child health outcomes and identify children who may need additional support."
+  },
+  {
+    ref:"DAPB4000", title:"Patient Level Information and Costing System (PLICS) 24/25",
+    type:"Standard", status:"Approved", date:"2025-04-01",
+    link:"http://www.england.nhs.uk/costing-in-the-nhs/approved-costing-guidance/",
+    summary:"PLICS 24/25 sets the standards for how NHS providers must collect and submit patient-level cost data, enabling NHS England to understand the true cost of treating individual patients across different care settings. It applies to all NHS trusts and foundation trusts submitting to the national costing programme. PLICS data supports the development of NHS payment systems, tariff setting and resource allocation decisions across the health service."
+  },
+  {
+    ref:"DAPB2090-3141", title:"GPES: Childhood Immunisations Hexavalent (6-in-1) Vaccination",
+    type:"Collection", status:"Approved", date:"2025-04-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections",
+    summary:"This collection extracts data from GP systems on the administration of the hexavalent 6-in-1 vaccination to infants, supporting monitoring of uptake of this key childhood immunisation against diphtheria, tetanus, pertussis, polio, Hib and hepatitis B. It applies to all GP practices in England delivering the NHS childhood immunisation schedule. The data supports UKHSA in monitoring vaccination coverage and identifying areas where additional outreach may be needed."
+  },
+  {
+    ref:"DAPB2179", title:"GPES: Measles, Mumps, Rubella (MMR) Vaccination",
+    type:"Collection", status:"Approved", date:"2025-04-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections",
+    summary:"This collection monitors MMR vaccination uptake across GP practices in England, providing data to UKHSA on coverage of the two-dose MMR schedule in the childhood immunisation programme. It applies to all GP practices delivering NHS childhood vaccinations. Given ongoing measles outbreaks nationally, MMR uptake data is a high-priority public health metric used to target catch-up vaccination programmes."
+  },
+  {
+    ref:"DAPB2090-3114", title:"GPES: COVID-19 At Risk Patients",
+    type:"Collection", status:"Approved", date:"2025-04-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections",
+    summary:"This collection identifies and extracts data on patients in GP practices who are clinically at high risk from COVID-19, supporting targeted vaccination, treatment and monitoring programmes for this vulnerable group. It applies to all GP practices in England with registered patients who meet the clinical at-risk criteria. The data underpins NHS England's ongoing COVID-19 management strategy for the most vulnerable patients."
+  },
+  {
+    ref:"DAPB2090-4087", title:"GPES: COVID-19 At Risk Patients Detained Estate",
+    type:"Collection", status:"Approved", date:"2025-04-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections",
+    summary:"This collection extends COVID-19 at-risk patient identification to the detained estate, covering patients in prisons and immigration removal centres who are at high clinical risk from COVID-19. It applies to GP practices and healthcare providers serving NHS patients in secure settings. The data ensures that clinically vulnerable individuals in the detained estate receive appropriate COVID-19 protection equivalent to the general population."
+  },
+  {
+    ref:"DAPB4108", title:"Digital Maturity Assessment (DMA)",
+    type:"Collection", status:"Approved", date:"2025-04-01",
+    link:"http://www.england.nhs.uk/digitaltechnology/connecteddigitalsystems/digital-maturity-assessment/",
+    summary:"The DMA collects self-assessment data from NHS organisations on their digital capabilities and maturity across clinical, infrastructure, and leadership domains, informing NHS England's digital transformation strategy. It applies to all NHS acute trusts, mental health trusts and ambulance trusts in England. DMA data is used to prioritise digital investment, support organisations with lower maturity and track progress toward the NHS's ambition for all trusts to achieve a high level of digital maturity."
+  },
+  {
+    ref:"DAPB4119", title:"Perinatal Pathology Data Set",
+    type:"Collection", status:"Approved", date:"2025-04-01",
+    link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/perinatal-pathology",
+    summary:"This data set collects information on perinatal post-mortem examinations and investigations following stillbirths and neonatal deaths, supporting the national review of these deaths through the MBRRACE-UK programme. It applies to all NHS trusts with perinatal pathology services and those referring cases for external examination. The data is essential for identifying preventable factors in perinatal deaths and implementing improvements in maternity and neonatal care."
+  },
+  {
+    ref:"DAPB3085", title:"All Age Continuing Care Data Set",
+    type:"Standard", status:"Approved", date:"2025-04-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb3085-all-age-continuing-care-data-set",
+    summary:"This standard defines the data requirements for collecting information on NHS Continuing Healthcare and Children and Young People's Continuing Care assessments, eligibility decisions and packages of care across all age groups. It applies to all integrated care boards and NHS trusts involved in CHC assessment and commissioning. The data supports NHS England in monitoring CHC programme performance, spend and access equity across the country."
+  },
+  {
+    ref:"DAPB2090-4084", title:"GPES: Network Contract Direct Enhanced Services (NCD)",
+    type:"Collection", status:"Approved", date:"2025-03-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections",
+    summary:"This collection extracts data from GP systems on activities delivered under the Network Contract Direct Enhanced Service, the contractual framework for Primary Care Networks in England. It applies to all GP practices participating in PCN DES arrangements. The data supports NHS England in monitoring PCN performance, managing payments and evaluating the effectiveness of network-based primary care delivery models."
+  },
+  {
+    ref:"DAPB3031", title:"Integrated Urgent Care Aggregate Data Collection (IUCADC)",
+    type:"Collection", status:"Approved", date:"2025-03-01",
+    link:"http://www.england.nhs.uk/statistics/statistical-work-areas/iucadc-new-from-april-2021/integrated-urgent-care-aggregate-data-collection-iucadc-including-nhs111-statistics-apr-2024-mar-2025/",
+    summary:"IUCADC collects aggregate data on contacts with NHS 111 and Integrated Urgent Care services, enabling NHS England to monitor demand, performance and outcomes across the urgent care system. It applies to all NHS 111 providers, clinical assessment services and urgent treatment centres. The data is published weekly and is used to manage winter pressures and inform planning of urgent care capacity nationally."
+  },
+  {
+    ref:"DAPB2090-3010", title:"GPES: GMS Core Contract",
+    type:"Collection", status:"Approved", date:"2025-03-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/gp-data-collections",
+    summary:"This collection extracts data from GP systems to support the administration of the General Medical Services core contract, covering registered list sizes, patient demographics and contractual indicators. It applies to all GMS contract GP practices in England. The data underpins capitation-based payments to GP practices and provides NHS England with the registered patient data needed for population health management."
+  },
+  {
+    ref:"DAPB2083", title:"Estates Return Information Collection (ERIC)",
+    type:"Collection", status:"Approved", date:"2025-03-01",
+    link:"https://digital.nhs.uk/data-and-information/areas-of-interest/estates-and-facilities/estates-and-facilities-management-information-system",
+    summary:"ERIC collects annual data from NHS trusts on the condition, performance and costs of their estate and facilities, providing NHS England with a comprehensive picture of the NHS estate across England. It applies to all NHS trusts and foundation trusts with a responsibility for managing physical NHS estate. The data supports capital planning decisions, identifies trusts with high maintenance backlogs and informs the NHS Estate Strategy."
+  },
+  {
+    ref:"DAPB2050", title:"Aggregate Contract Monitoring",
+    type:"Standard", status:"Approved", date:"2025-01-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/contract-monitoring",
+    summary:"This standard defines the data requirements for aggregate-level reporting of NHS contract activity, enabling commissioners and NHS England to monitor service delivery against contracted volumes and quality standards. It applies to all NHS providers and independent sector organisations delivering services under NHS contracts. Aggregate contract monitoring data is a key tool for integrated care boards in managing provider performance and financial reconciliation."
+  },
+  {
+    ref:"DAPB2212", title:"Drugs Patient Level Contract Monitoring",
+    type:"Standard", status:"Approved", date:"2025-01-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/contract-monitoring",
+    summary:"This standard sets the requirements for patient-level reporting of drugs prescribed and administered under NHS contracts, enabling accurate reconciliation of medicines expenditure between commissioners and providers. It applies to all NHS trusts and independent sector providers dispensing high-cost drugs funded through NHS contracts. Patient-level drugs data supports accurate payment, medicines optimisation and detection of prescribing anomalies."
+  },
+  {
+    ref:"DAPB3002", title:"Patient Level Contract Monitoring",
+    type:"Standard", status:"Approved", date:"2025-01-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/contract-monitoring",
+    summary:"This standard defines the data requirements for patient-level activity reporting under NHS contracts, enabling commissioners to reconcile individual patient activity against contracted services and tariff payments. It applies to all NHS trusts and foundation trusts submitting activity data for payment. Patient-level contract monitoring underpins the NHS payment system and enables accurate financial flows between commissioners and providers."
+  },
+  {
+    ref:"DAPB3003", title:"Devices Patient Level Contract Monitoring",
+    type:"Collection", status:"Approved", date:"2025-01-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/contract-monitoring",
+    summary:"This collection supports patient-level monitoring of medical devices implanted or used during NHS treatment, enabling accurate reconciliation of device costs between commissioners and providers. It applies to NHS trusts using high-cost devices funded under NHS contracts. Accurate device-level data supports the NHS in managing expenditure on high-cost medical devices and linking device use to patient outcomes."
+  },
+  {
+    ref:"DAPB3103", title:"Medical Devices Outcomes Registry",
+    type:"Collection", status:"Approved", date:"2024-12-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb3103-medical-devices-outcomes-registry",
+    summary:"This registry collects data on the implantation and outcomes of surgical medical devices such as orthopaedic implants and cardiac devices, supporting post-market surveillance and patient safety monitoring. It applies to all NHS trusts and independent sector providers implanting surgical devices in NHS patients. The data enables identification of device-related complications and supports MHRA in its regulatory oversight of medical device safety."
+  },
+  {
+    ref:"DAPB2235", title:"National Diabetes Audit",
+    type:"Collection", status:"Approved", date:"2024-12-01",
+    link:"https://digital.nhs.uk/data-and-information/clinical-audits-and-registries/national-diabetes-audit",
+    summary:"The National Diabetes Audit is the world's largest audit of diabetes care, collecting comprehensive data on the care processes and outcomes for people with Type 1 and Type 2 diabetes in England and Wales. It applies to all NHS GP practices and specialist diabetes services. NDA data is used to benchmark care quality, drive improvement through published reports and support the NHS Long Term Plan ambition to improve outcomes for the 4.3 million people in England living with diabetes."
+  },
+  {
+    ref:"DAPB4115", title:"Theatre Estate Register",
+    type:"Collection", status:"Approved", date:"2024-12-01",
+    link:"https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-collections/theatre-estates",
+    summary:"The Theatre Estate Register collects data on NHS operating theatres including location, capacity, equipment and utilisation, providing NHS England with a comprehensive inventory of surgical capacity across the country. It applies to all NHS trusts with operating theatres delivering elective and emergency surgical services. The data supports the NHS Elective Recovery Programme by identifying opportunities to maximise theatre utilisation and reduce waiting lists."
+  },
+  {
+    ref:"DAPB1069", title:"Child Protection Information Sharing",
+    type:"Standard", status:"Approved", date:"2024-10-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1609-child-protection-information-sharing",
+    summary:"CP-IS defines the data and system requirements for sharing child protection information between children's social care and NHS providers at the point of an unplanned attendance, enabling clinicians to identify children who are subject to a child protection plan. It applies to all NHS acute trusts, urgent care providers and ambulance services in England. The standard is a critical tool in protecting vulnerable children from harm by ensuring clinicians have access to safeguarding information at the point of care."
+  },
+  {
+    ref:"DAPB1067", title:"National Workforce Dataset (NWD)",
+    type:"Standard", status:"Approved", date:"2024-08-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb1067-national-workforce-data-set",
+    summary:"The National Workforce Data Set defines the data standards for collecting information on NHS staff including headcount, whole time equivalents, vacancy rates, sickness absence and turnover across all NHS organisations. It applies to all NHS trusts, foundation trusts and arm's length bodies submitting workforce data to NHS England. NWD data underpins the NHS People Plan, long term workforce planning and publication of the monthly NHS Workforce Statistics."
+  },
+  {
+    ref:"DAPB4109", title:"Intermediate Care Data Collection",
+    type:"Collection", status:"Approved", date:"2024-07-01",
+    link:"http://www.england.nhs.uk/publication/covid-19-eprr-acute-and-community-daily-discharge-situation-reports-sitreps/",
+    summary:"This collection gathers data on intermediate care services including reablement, rehabilitation and step-down care that support people to return home following a hospital stay or to avoid hospital admission. It applies to NHS trusts, local authorities and independent sector providers delivering intermediate care services funded by the NHS. The data supports NHS England and DHSC in managing hospital discharge pressures and improving the flow of patients through the health and care system."
+  },
+  {
+    ref:"DAPB4094", title:"Healthcare Operational Data Flows: Acute Information Standard",
+    type:"Standard", status:"Approved", date:"2024-06-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4094-healthcare-operational-data-flows-acute-information-standard",
+    summary:"This standard defines the data flows and information requirements for acute hospital operational data, providing a consistent framework for real-time reporting of bed occupancy, emergency department attendances and elective activity across NHS acute trusts. It applies to all NHS acute trusts and foundation trusts in England. The standard supports the NHS daily situation reporting infrastructure used by NHS England to manage system pressures."
+  },
+  {
+    ref:"DAPB4005", title:"Secondary Care Electronic Prescribing and Medicines Administration (ePMA) Data Collection",
+    type:"Standard", status:"Approved", date:"2024-05-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4005-secondary-care-electronic-prescribing-and-medicines-administration-epma-data-collection",
+    summary:"This standard defines the data requirements for electronic prescribing and medicines administration systems in secondary care, enabling consistent collection of medicines data across NHS hospitals. It applies to all NHS trusts implementing or operating ePMA systems. Standardised ePMA data supports medicines safety monitoring, the NHS medicines optimisation agenda and the long-term goal of a fully interoperable medicines record across health and care settings."
+  },
+  {
+    ref:"DAPB0092-2062", title:"Emergency Care Data Set v4",
+    type:"Collection", status:"Approved", date:"2024-05-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb0092-2062-commissioning-data-sets-emergency-care-data-set",
+    summary:"ECDS v4 is the national data standard for collecting clinical and operational information on all attendances at NHS emergency departments, urgent treatment centres and minor injury units. It applies to all NHS providers with type 1, 2 and 3 emergency departments and urgent treatment centres in England. ECDS data is published monthly as a key NHS performance dataset and is used to monitor the 4-hour emergency access standard and emergency care quality indicators."
+  },
+  {
+    ref:"ISB1594", title:"Information Sharing to Tackle Violence (ISTV) Minimum Data Set",
+    type:"Collection", status:"Approved", date:"2024-05-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/isb1594-information-sharing-to-tackle-violence-minimum-dataset",
+    summary:"ISTV defines the minimum data set for sharing information between NHS emergency departments and police, local authorities and community safety partnerships about victims of violence presenting for treatment. It applies to all NHS trusts with emergency departments participating in violence reduction programmes. The data sharing framework supports the Violence Reduction Units and public health approaches to reducing serious violence."
+  },
+  {
+    ref:"DAPB4101", title:"Pathology and Laboratory Medicine Reporting Information Standard",
+    type:"Standard", status:"Approved", date:"2024-03-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4101-pathology-and-laboratory-medicine-reporting-information-standard",
+    summary:"This standard defines the data and information requirements for pathology and laboratory medicine test requesting and result reporting across NHS England, enabling consistent and interoperable exchange of lab results between requesting clinicians and laboratories. It applies to all NHS trusts with pathology laboratories and those receiving laboratory results from external providers. Standardised pathology reporting is foundational to the NHS Digital Pathology Programme and interoperability of clinical systems."
+  },
+  {
+    ref:"DAPB4102", title:"Adult Social Care Digital Social Care Record (DSCR): Minimum Operational Data Specification",
+    type:"Standard", status:"Approved", date:"2024-03-01",
+    link:"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dapb4102-adult-social-care-record-minimum-operational-data-standard",
+    summary:"This standard defines the minimum data that must be captured and made available by Digital Social Care Record systems used by adult social care providers, enabling consistent data collection and interoperability with NHS systems. It applies to all CQC-registered adult social care providers in England adopting a digital care record. The DSCR standard is central to the DHSC ambition for all adult social care providers to have a digital care record by 2024, supporting better coordinated care between health and social care."
+  }
 ];
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════════════════ */
 
 function fmtDate(iso) {
   if (!iso) return "";
@@ -329,6 +903,73 @@ function typePill(type) {
   return `<span class="pill pill-default">${type}</span>`;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   DETAIL PANEL
+═══════════════════════════════════════════════════════════════ */
+
+let pageItems   = [];
+let activeRowEl = null;
+
+function openPanel(idx) {
+  const item = pageItems[idx];
+  if (!item) return;
+
+  // Highlight the selected row
+  if (activeRowEl) activeRowEl.classList.remove("selected");
+  activeRowEl = document.querySelector(`tr[data-idx="${idx}"]`);
+  if (activeRowEl) activeRowEl.classList.add("selected");
+
+  // Populate ref chip
+  document.getElementById("pRef").textContent = item.ref || "–";
+  document.getElementById("pHeadTitle").textContent = item.title;
+
+  // Meta chips
+  document.getElementById("pMeta").innerHTML =
+    typePill(item.type) +
+    `<span class="p-date-chip">&#128197;&nbsp;${fmtDate(item.date)}</span>` +
+    (item.summary
+      ? `<span class="ai-badge">&#129302; AI Summary</span>`
+      : "");
+
+  // AI Summary
+  const summaryEl = document.getElementById("pSummary");
+  if (item.summary && item.summary.trim()) {
+    summaryEl.textContent = item.summary;
+    summaryEl.className   = "ai-summary-text";
+  } else {
+    summaryEl.textContent =
+      "AI summary not yet available for this item. " +
+      "Summaries will be generated automatically on the next scheduled update.";
+    summaryEl.className = "ai-no-summary";
+  }
+
+  // Link
+  document.getElementById("pLink").href = item.link || "#";
+
+  // Open panel and overlay
+  document.getElementById("panel").classList.add("open");
+  document.getElementById("overlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closePanel() {
+  document.getElementById("panel").classList.remove("open");
+  document.getElementById("overlay").classList.remove("open");
+  document.body.style.overflow = "";
+  if (activeRowEl) {
+    activeRowEl.classList.remove("selected");
+    activeRowEl = null;
+  }
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closePanel();
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   FILTER / SORT
+═══════════════════════════════════════════════════════════════ */
+
 const PAGE_SIZE = 25;
 let currentPage = 1;
 let sortKey     = "date";
@@ -341,18 +982,17 @@ function applyFilters() {
   const yearF  = document.getElementById("yearFilter").value;
 
   filtered = DATA.filter(item => {
-    const matchSearch = !search ||
-      item.ref.toLowerCase().includes(search) ||
+    const ms = !search ||
+      item.ref.toLowerCase().includes(search)   ||
       item.title.toLowerCase().includes(search) ||
       item.type.toLowerCase().includes(search);
-    const matchType = !typeF || item.type === typeF;
-    const matchYear = !yearF || item.date.startsWith(yearF);
-    return matchSearch && matchType && matchYear;
+    return ms &&
+      (!typeF || item.type === typeF) &&
+      (!yearF || item.date.startsWith(yearF));
   });
 
   filtered.sort((a, b) => {
-    let va = a[sortKey] || "";
-    let vb = b[sortKey] || "";
+    const va = a[sortKey] || "", vb = b[sortKey] || "";
     if (va < vb) return -1 * sortDir;
     if (va > vb) return  1 * sortDir;
     return 0;
@@ -363,13 +1003,13 @@ function applyFilters() {
 }
 
 function sortBy(key) {
-  if (sortKey === key) { sortDir = -sortDir; }
+  if (sortKey === key) sortDir = -sortDir;
   else { sortKey = key; sortDir = 1; }
-  updateSortArrows();
+  updateArrows();
   applyFilters();
 }
 
-function updateSortArrows() {
+function updateArrows() {
   ["ref","title","type","date"].forEach(c => {
     const th  = document.getElementById(`th-${c}`);
     const arr = document.getElementById(`arr-${c}`);
@@ -383,84 +1023,105 @@ function updateSortArrows() {
   });
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════════════════ */
+
 function render() {
-  const totalItems = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-  if (currentPage > totalPages) currentPage = totalPages;
+  const total = filtered.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (currentPage > pages) currentPage = pages;
 
   const start = (currentPage - 1) * PAGE_SIZE;
-  const end   = Math.min(start + PAGE_SIZE, totalItems);
-  const page  = filtered.slice(start, end);
+  const end   = Math.min(start + PAGE_SIZE, total);
+  pageItems   = filtered.slice(start, end);
+
   const tbody = document.getElementById("tableBody");
 
-  if (page.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">&#128203; No items match your search or filter.</td></tr>`;
+  if (!pageItems.length) {
+    tbody.innerHTML = `
+      <tr class="empty-row">
+        <td colspan="4">&#128203; No items match your search or filter.</td>
+      </tr>`;
   } else {
-    tbody.innerHTML = page.map(item => {
+    tbody.innerHTML = pageItems.map((item, idx) => {
       const refCell = item.ref
         ? `<span class="ref-badge">${item.ref}</span>`
-        : `<span class="ref-empty">-</span>`;
-      const titleCell = item.link
-        ? `<a href="${item.link}" target="_blank" rel="noopener noreferrer" class="title-link">${item.title}</a>`
-        : item.title;
+        : `<span class="ref-empty">–</span>`;
+
+      const aiBadge = item.summary && item.summary.trim()
+        ? `<span class="ai-badge">&#129302; AI</span>`
+        : "";
+
       return `
-        <tr>
+        <tr onclick="openPanel(${idx})" data-idx="${idx}"
+            title="Click to view details and AI summary">
           <td>${refCell}</td>
-          <td>${titleCell}</td>
+          <td class="title-cell">
+            <span class="title-name">${item.title}</span>${aiBadge}
+          </td>
           <td>${typePill(item.type)}</td>
           <td class="date-cell">${fmtDate(item.date)}</td>
         </tr>`;
     }).join("");
   }
 
-  const from = totalItems === 0 ? 0 : start + 1;
+  const from = total === 0 ? 0 : start + 1;
   document.getElementById("resultInfo").textContent =
-    `Showing ${from}-${end} of ${totalItems} item${totalItems !== 1 ? "s" : ""}`;
+    `Showing ${from}\u2013${end} of ${total} item${total !== 1 ? "s" : ""}`;
   document.getElementById("pageInfo").textContent =
-    `Page ${currentPage} of ${totalPages}`;
-  renderPagination(totalPages);
+    `Page ${currentPage} of ${pages}`;
+
+  renderPager(pages);
 }
 
-function renderPagination(totalPages) {
-  const container = document.getElementById("pageBtns");
-  container.innerHTML = "";
+/* ═══════════════════════════════════════════════════════════════
+   PAGINATION
+═══════════════════════════════════════════════════════════════ */
 
-  function btn(label, action, disabled, active, ellipsis) {
+function renderPager(pages) {
+  const c = document.getElementById("pageBtns");
+  c.innerHTML = "";
+
+  const btn = (label, action, disabled, active, dots) => {
     const b = document.createElement("button");
-    b.className = "page-btn" + (active ? " active" : "") + (ellipsis ? " ellipsis" : "");
+    b.className = "pbtn" +
+      (active ? " active" : "") +
+      (dots   ? " dots"   : "");
     b.innerHTML = label;
     b.disabled  = disabled;
-    if (!disabled && !active && !ellipsis) b.onclick = action;
-    container.appendChild(b);
-  }
+    if (!disabled && !active && !dots) b.onclick = action;
+    c.appendChild(b);
+  };
 
-  btn("&#171; First", () => goTo(1),                currentPage === 1,          false, false);
-  btn("&#8249; Prev",  () => goTo(currentPage - 1), currentPage === 1,          false, false);
+  btn("&#171; First", () => goTo(1),                currentPage === 1,     false, false);
+  btn("&#8249; Prev",  () => goTo(currentPage - 1), currentPage === 1,     false, false);
 
-  const pages = [];
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  const nums = [];
+  if (pages <= 7) {
+    for (let i = 1; i <= pages; i++) nums.push(i);
   } else {
-    pages.push(1);
-    if (currentPage > 3) pages.push("...");
+    nums.push(1);
+    if (currentPage > 3) nums.push("...");
     const lo = Math.max(2, currentPage - 1);
-    const hi = Math.min(totalPages - 1, currentPage + 1);
-    for (let i = lo; i <= hi; i++) pages.push(i);
-    if (currentPage < totalPages - 2) pages.push("...");
-    pages.push(totalPages);
+    const hi = Math.min(pages - 1, currentPage + 1);
+    for (let i = lo; i <= hi; i++) nums.push(i);
+    if (currentPage < pages - 2) nums.push("...");
+    nums.push(pages);
   }
 
-  pages.forEach(p => {
-    if (p === "...") { btn("...", null, true, false, true); }
-    else { btn(p, () => goTo(p), false, p === currentPage, false); }
+  nums.forEach(p => {
+    if (p === "...") btn("...", null, true, false, true);
+    else btn(p, () => goTo(p), false, p === currentPage, false);
   });
 
-  btn("Next &#8250;", () => goTo(currentPage + 1), currentPage === totalPages, false, false);
-  btn("Last &#187;",  () => goTo(totalPages),       currentPage === totalPages, false, false);
+  btn("Next &#8250;", () => goTo(currentPage + 1), currentPage === pages, false, false);
+  btn("Last &#187;",  () => goTo(pages),            currentPage === pages, false, false);
 }
 
 function goTo(page) {
   currentPage = page;
+  closePanel();
   render();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -472,13 +1133,17 @@ function clearFilters() {
   applyFilters();
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════════════ */
+
 document.getElementById("searchInput").addEventListener("input",  applyFilters);
 document.getElementById("typeFilter").addEventListener("change", applyFilters);
 document.getElementById("yearFilter").addEventListener("change", applyFilters);
 
-updateSortArrows();
+updateArrows();
 applyFilters();
-</script>
 
+</script>
 </body>
 </html>
