@@ -4,6 +4,10 @@ import os
 
 import sys
 
+import time
+
+import requests
+
 from bs4 import BeautifulSoup
 
 from datetime import datetime
@@ -12,475 +16,594 @@ HTML_FILE  = "index.html"
 
 BASE_URL   = "https://digital.nhs.uk"
 
-URL        = (
+TARGET_URL = (
 
-    "https://digital.nhs.uk/data-and-information/"
+"https://digital.nhs.uk/data-and-information/"
 
-    "information-standards/governance/latest-activity"
+"information-standards/governance/latest-activity"
 
 )
 
-TARGET_IDS = [
-
-    "data-assurance-board-dab-approvals-from-april-2025",
-
-    "data-assurance-board-dab-approvals-from-march-2024-march-2025",
-
-]
-
 MONTH_MAP = {
 
-    "january": "01", "february": "02", "march":     "03",
+"january": "01", "february": "02", "march":     "03",
 
-    "april":   "04", "may":      "05", "june":      "06",
+"april":   "04", "may":      "05", "june":      "06",
 
-    "july":    "07", "august":   "08", "september": "09",
+"july":    "07", "august":   "08", "september": "09",
 
-    "october": "10", "november": "11", "december":  "12",
+"october": "10", "november": "11", "december":  "12",
 
 }
 
 REF_RE = re.compile(
 
-    r'^((?:DAPB|DCB|SCCI|ISB|ISN)\d+[\w\-]*)',
+r'^((?:DAPB|DCB|SCCI|ISB|ISN)\d+[\w\-]*)',
 
-    re.IGNORECASE
+re.IGNORECASE
 
 )
 
-
-# ─────────────────────────────────────────────────────────────────
-
-# HELPERS
-
-# ─────────────────────────────────────────────────────────────────
-
 def clean(text):
 
-    text = text.replace("\xa0", " ").replace("\u200b", "")
+text = text.replace("\xa0", " ").replace("\u200b", "")
 
-    return re.sub(r"\s+", " ", text).strip()
-
+return re.sub(r"\s+", " ", text).strip()
 
 def format_date(raw):
 
-    raw = clean(raw)
+raw = clean(raw)
 
-    m = re.match(r'^\d{1,2}\s+([A-Za-z]+)\s+(\d{4})', raw)
+m = re.match(r'^\d{1,2}\s+([A-Za-z]+)\s+(\d{4})', raw)
 
-    if m:
+if m:
 
-        return f"{m.group(2)}-{MONTH_MAP.get(m.group(1).lower(), '01')}-01"
+return f"{m.group(2)}-{MONTH_MAP.get(m.group(1).lower(), '01')}-01"
 
-    m = re.match(r'^([A-Za-z]+)\s+(\d{4})', raw)
+m = re.match(r'^([A-Za-z]+)\s+(\d{4})', raw)
 
-    if m:
+if m:
 
-        return f"{m.group(2)}-{MONTH_MAP.get(m.group(1).lower(), '01')}-01"
+return f"{m.group(2)}-{MONTH_MAP.get(m.group(1).lower(), '01')}-01"
 
-    return raw
-
+return raw
 
 def parse_type(raw):
 
-    t = clean(raw).lower()
+t = clean(raw).lower()
 
-    if "standard and collection" in t or "standard & collection" in t:
+if "standard and collection" in t or "standard & collection" in t:
 
-        return "Standard & Collection"
+return "Standard & Collection"
 
-    if "standard" in t and "collection" in t:
+if "standard" in t and "collection" in t:
 
-        return "Standard & Collection"
+return "Standard & Collection"
 
-    if "collection" in t:
+if "collection" in t:
 
-        return "Collection"
+return "Collection"
 
-    if "standard" in t:
+if "standard" in t:
 
-        return "Standard"
+return "Standard"
 
-    if "consultation" in t:
+if "consultation" in t:
 
-        return "Consultation"
+return "Consultation"
 
-    return clean(raw)
-
+return clean(raw)
 
 def extract_ref(text):
 
-    m = REF_RE.match(text)
+m = REF_RE.match(text)
 
-    return m.group(1).upper().strip() if m else ""
+return m.group(1).upper().strip() if m else ""
 
+def load_existing_summaries():
 
-# ─────────────────────────────────────────────────────────────────
+existing = {}
 
-# FETCH — Playwright with domcontentloaded (not networkidle)
+if not os.path.exists(HTML_FILE):
 
-# networkidle times out on NHS Digital because the page keeps
+return existing
 
-# making background requests. domcontentloaded fires as soon as
+with open(HTML_FILE, "r", encoding="utf-8") as f:
 
-# the HTML is parsed, which is all we need.
+html = f.read()
 
-# ─────────────────────────────────────────────────────────────────
+pat = re.compile(r"const\s+DATA\s*=\s*\[([\s\S]*?)\]\s*;", re.MULTILINE)
+
+m = pat.search(html)
+
+if not m:
+
+return existing
+
+data_str = m.group(1)
+
+ref_pat     = re.compile(r'ref:"([^"]*)"')
+
+summary_pat = re.compile(r'summary:"((?:[^"\\]|\\.)*)"')
+
+refs      = ref_pat.findall(data_str)
+
+summaries = summary_pat.findall(data_str)
+
+for ref, summary in zip(refs, summaries):
+
+if ref and summary.strip():
+
+existing[ref] = summary.replace('\\"', '"').replace("\\\\", "\\")
+
+print(f"  Loaded {len(existing)} existing summaries")
+
+return existing
 
 def fetch(url):
 
-    from playwright.sync_api import sync_playwright
+import cloudscraper
 
-    print(f"  Launching Chromium browser...")
+print(f"  Fetching: {url}")
 
-    with sync_playwright() as p:
+scraper = cloudscraper.create_scraper(
 
-        browser = p.chromium.launch(
+browser={
 
-            headless=True,
+"browser":  "chrome",
 
-            args=[
+"platform": "windows",
 
-                "--no-sandbox",
+"desktop":  True,
 
-                "--disable-setuid-sandbox",
+}
 
-                "--disable-dev-shm-usage",
+)
 
-                "--disable-gpu",
+resp = scraper.get(url, timeout=60)
 
-            ]
+print(f"  Status   : {resp.status_code}")
 
-        )
+print(f"  HTML size: {len(resp.text):,} chars")
 
-        context = browser.new_context(
+if resp.status_code != 200:
 
-            user_agent=(
+print(f"  ERROR: {resp.status_code}")
 
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+sys.exit(1)
 
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
+if len(resp.text) < 50000:
 
-                "Chrome/123.0.0.0 Safari/537.36"
+print(f"  WARNING: Small response — may be a block page")
 
-            ),
+print(f"  First 300 chars: {resp.text[:300]}")
 
-            locale="en-GB",
-
-            viewport={"width": 1280, "height": 800},
-
-        )
-
-        page = context.new_page()
-
-        print(f"  Navigating to: {url}")
-
-        # Use domcontentloaded — fires when HTML is parsed
-
-        # This avoids the networkidle timeout on NHS Digital
-
-        page.goto(url, wait_until="domcontentloaded", timeout=60000)
-
-        print(f"  DOM loaded — waiting for table to appear...")
-
-        # Wait up to 15 seconds for the first DAB approvals section
-
-        # to be present in the DOM before extracting HTML
-
-        try:
-
-            page.wait_for_selector(
-
-                "#data-assurance-board-dab-approvals-from-april-2025",
-
-                timeout=15000
-
-            )
-
-            print(f"  Target section found.")
-
-        except Exception:
-
-            print(f"  WARNING: Target section not found in 15s — extracting anyway.")
-
-        content = page.content()
-
-        browser.close()
-
-        print(f"  HTML extracted ({len(content):,} chars).")
-
-    return BeautifulSoup(content, "lxml")
-
-
-# ─────────────────────────────────────────────────────────────────
-
-# FIND TABLE
-
-# ─────────────────────────────────────────────────────────────────
+return BeautifulSoup(resp.text, "lxml")
 
 def find_table(section):
 
-    for t in section.find_all("table"):
+for t in section.find_all("table"):
 
-        if t.has_attr("data-responsive"):
+if t.has_attr("data-responsive"):
 
-            return t
+return t
 
-    w = section.find("div", class_="nhsd-m-table")
+w = section.find("div", class_="nhsd-m-table")
 
-    if w:
+if w:
 
-        t = w.find("table")
+t = w.find("table")
 
-        if t:
+if t:
 
-            return t
+return t
 
-    return section.find("table")
-
-
-# ─────────────────────────────────────────────────────────────────
-
-# SCRAPE
-
-# ─────────────────────────────────────────────────────────────────
+return section.find("table")
 
 def scrape(soup):
 
-    items = []
+"""
 
-    seen  = set()
+KEY CHANGE: Instead of hardcoding section IDs, we find ALL divs
 
-    for div_id in TARGET_IDS:
+whose id contains 'dab-approvals' — this automatically picks up
 
-        section = soup.find("div", id=div_id)
+new sections added for future time periods (e.g. April 2026).
 
-        if not section:
+"""
 
-            print(f"  WARNING: Section not found: {div_id}")
+# Find ALL DAB approval sections dynamically
 
-            continue
+# This regex matches any div id containing 'dab-approvals'
 
-        h = section.find(["h2", "h3"])
+# e.g. data-assurance-board-dab-approvals-from-april-2025
 
-        print(f"\n  SECTION: {clean(h.get_text()) if h else div_id}")
+#      data-assurance-board-dab-approvals-from-april-2026  <- auto detected
 
-        table = find_table(section)
+#      data-assurance-board-dab-approvals-from-march-2024-march-2025
 
-        if not table:
+all_sections = soup.find_all(
 
-            print("  WARNING: No table found")
+"div",
 
-            continue
+id=re.compile(r"dab-approvals", re.IGNORECASE)
 
-        tbody = table.find("tbody")
+)
 
-        if not tbody:
+print(f"\n  Found {len(all_sections)} DAB approval section(s) on the page:")
 
-            print("  WARNING: No tbody found")
+items = []
 
-            continue
+seen  = set()
 
-        rows = tbody.find_all("tr")
+for section in all_sections:
 
-        print(f"  ROWS   : {len(rows)}")
+h = section.find(["h2", "h3"])
 
-        count = 0
+label = clean(h.get_text()) if h else section.get("id", "unknown")
 
-        for tr in rows:
+print(f"\n  SECTION: {label}")
 
-            cells = tr.find_all(["td", "th"])
+table = find_table(section)
 
-            if len(cells) < 2:
+if not table:
 
-                continue
+print("  WARNING: No table found — skipping")
 
-            nc   = cells[0]
+continue
 
-            name = clean(nc.get_text(separator=" "))
+tbody = table.find("tbody")
 
-            if not name:
+if not tbody:
 
-                continue
+print("  WARNING: No tbody — skipping")
 
-            ref   = extract_ref(name)
+continue
 
-            title = name
+rows = tbody.find_all("tr")
 
-            a    = nc.find("a", href=True)
+print(f"  ROWS   : {len(rows)}")
 
-            href = a.get("href", "") if a else ""
+count = 0
 
-            link = href if href.startswith("http") else BASE_URL + href
+for tr in rows:
 
-            key = ref if ref else title
+cells = tr.find_all(["td", "th"])
 
-            if key in seen:
+if len(cells) < 2:
 
-                continue
+continue
 
-            seen.add(key)
+nc   = cells[0]
 
-            date_raw = cells[1].get_text(separator=" ") if len(cells) > 1 else ""
+name = clean(nc.get_text(separator=" "))
 
-            type_raw = cells[2].get_text(separator=" ") if len(cells) > 2 else ""
+if not name:
 
-            items.append({
+continue
 
-                "ref"   : ref,
+ref   = extract_ref(name)
 
-                "title" : title,
+title = name
 
-                "type"  : parse_type(type_raw),
+a    = nc.find("a", href=True)
 
-                "status": "Approved",
+href = a.get("href", "") if a else ""
 
-                "date"  : format_date(date_raw),
+link = href if href.startswith("http") else BASE_URL + href
 
-                "link"  : link,
+key = ref if ref else title
 
-            })
+if key in seen:
 
-            count += 1
+continue
 
-        print(f"  ITEMS  : {count}")
+seen.add(key)
 
-    return items
+date_raw = cells[1].get_text(separator=" ") if len(cells) > 1 else ""
 
+type_raw = cells[2].get_text(separator=" ") if len(cells) > 2 else ""
 
-# ─────────────────────────────────────────────────────────────────
+items.append({
 
-# BUILD JAVASCRIPT ARRAY
+"ref"    : ref,
 
-# ─────────────────────────────────────────────────────────────────
+"title"  : title,
+
+"type"   : parse_type(type_raw),
+
+"status" : "Approved",
+
+"date"   : format_date(date_raw),
+
+"link"   : link,
+
+"summary": "",
+
+})
+
+count += 1
+
+print(f"  ITEMS  : {count}")
+
+return items
+
+def generate_summary(ref, title, item_type, api_key):
+
+try:
+
+resp = requests.post(
+
+"https://api.openai.com/v1/chat/completions",
+
+headers={
+
+"Authorization": f"Bearer {api_key}",
+
+"Content-Type":  "application/json",
+
+},
+
+json={
+
+"model": "gpt-4o-mini",
+
+"messages": [
+
+{
+
+"role": "system",
+
+"content": (
+
+"You are a health informatics analyst at the NHS. "
+
+"Write clear, jargon-free 2-3 sentence summaries "
+
+"for a non-technical audience. Keep under 60 words. "
+
+"Do not use bullet points."
+
+)
+
+},
+
+{
+
+"role": "user",
+
+"content": (
+
+f"Summarise this NHS information standard in plain English.\n\n"
+
+f"Reference: {ref}\n"
+
+f"Name: {title}\n"
+
+f"Type: {item_type}\n\n"
+
+f"Cover: what it does, who it applies to, and why it matters."
+
+)
+
+}
+
+],
+
+"max_tokens": 150,
+
+"temperature": 0.3,
+
+},
+
+timeout=30
+
+)
+
+if resp.status_code == 200:
+
+return resp.json()["choices"][0]["message"]["content"].strip()
+
+print(f"    OpenAI error {resp.status_code}")
+
+return ""
+
+except Exception as e:
+
+print(f"    Summary error: {e}")
+
+return ""
+
+def add_summaries(items, existing_summaries):
+
+openai_key = os.environ.get("OPENAI_API_KEY", "")
+
+if not openai_key:
+
+print("\n  INFO: OPENAI_API_KEY not set — using cached summaries only")
+
+for item in items:
+
+item["summary"] = existing_summaries.get(item["ref"], "")
+
+return items
+
+total     = len(items)
+
+new_count = 0
+
+for idx, item in enumerate(items, 1):
+
+ref = item["ref"]
+
+if ref in existing_summaries and existing_summaries[ref]:
+
+item["summary"] = existing_summaries[ref]
+
+print(f"  [{idx}/{total}] {ref:<20} — cached")
+
+else:
+
+print(f"  [{idx}/{total}] {ref:<20} — generating new summary...")
+
+summary = generate_summary(ref, item["title"], item["type"], openai_key)
+
+item["summary"] = summary
+
+new_count += 1
+
+time.sleep(0.5)
+
+print(f"\n  Summaries: {new_count} new | {total - new_count} from cache")
+
+return items
 
 def build_js_array(items):
 
-    def esc(s):
+def esc(s):
 
-        return s.replace("\\", "\\\\").replace('"', '\\"')
+return s.replace("\\", "\\\\").replace('"', '\\"')
 
-    rows = []
+rows = []
 
-    for i in items:
+for i in items:
 
-        rows.append(
+rows.append(
 
-            f'  {{ ref:"{esc(i["ref"])}", title:"{esc(i["title"])}", '
+f'  {{ '
 
-            f'type:"{esc(i["type"])}", status:"{esc(i["status"])}", '
+f'ref:"{esc(i["ref"])}", '
 
-            f'date:"{esc(i["date"])}", link:"{esc(i["link"])}" }}'
+f'title:"{esc(i["title"])}", '
 
-        )
+f'type:"{esc(i["type"])}", '
 
-    return "[\n" + ",\n".join(rows) + "\n]"
+f'status:"{esc(i["status"])}", '
 
+f'date:"{esc(i["date"])}", '
 
-# ─────────────────────────────────────────────────────────────────
+f'link:"{esc(i["link"])}", '
 
-# INJECT INTO HTML
+f'summary:"{esc(i["summary"])}" '
 
-# ─────────────────────────────────────────────────────────────────
+f'}}'
+
+)
+
+return "[\n" + ",\n".join(rows) + "\n]"
 
 def inject(items, path):
 
-    if not os.path.exists(path):
+if not os.path.exists(path):
 
-        print(f"ERROR: {path} not found")
+print(f"ERROR: {path} not found")
 
-        sys.exit(1)
+sys.exit(1)
 
-    with open(path, "r", encoding="utf-8") as f:
+with open(path, "r", encoding="utf-8") as f:
 
-        html = f.read()
+html = f.read()
 
-    if "const DATA" not in html:
+if "const DATA" not in html:
 
-        print("ERROR: const DATA not found in HTML")
+print("ERROR: const DATA not found")
 
-        sys.exit(1)
+sys.exit(1)
 
-    pat = re.compile(r"const\s+DATA\s*=\s*\[[\s\S]*?\]\s*;", re.MULTILINE)
+pat = re.compile(r"const\s+DATA\s*=\s*\[[\s\S]*?\]\s*;", re.MULTILINE)
 
-    rep = f"const DATA = {build_js_array(items)};"
+rep = f"const DATA = {build_js_array(items)};"
 
-    new = pat.sub(lambda m: rep, html)
+new = pat.sub(lambda m: rep, html)
 
-    if new == html:
+if new == html:
 
-        print("ERROR: DATA array was not replaced")
+print("ERROR: DATA array was not replaced")
 
-        sys.exit(1)
+sys.exit(1)
 
-    print(f"  OK: {len(items)} items injected")
+print(f"  OK: {len(items)} items injected")
 
-    today = datetime.now().strftime("%d %b %Y")
+today = datetime.now().strftime("%d %b %Y")
 
-    new   = re.sub(r"Last updated:[\s\w]+\d{4}", f"Last updated: {today}", new)
+new   = re.sub(r"Last updated:[\s\w]+\d{4}", f"Last updated: {today}", new)
 
-    with open(path, "w", encoding="utf-8") as f:
+with open(path, "w", encoding="utf-8") as f:
 
-        f.write(new)
+f.write(new)
 
-    print(f"  SAVED: {os.path.abspath(path)}")
-
-
-# ─────────────────────────────────────────────────────────────────
-
-# MAIN
-
-# ─────────────────────────────────────────────────────────────────
+print(f"  SAVED: {os.path.abspath(path)}")
 
 def main():
 
-    preview = "--preview" in sys.argv
+preview = "--preview" in sys.argv
 
-    print("\n" + "=" * 55)
+print("\n" + "=" * 55)
 
-    print("  Altera ISN Tracker - NHS Digital Scraper")
+print("  Altera ISN Tracker - NHS Digital Scraper")
 
-    print(f"  {datetime.now().strftime('%d %B %Y  %H:%M')}")
+print(f"  {datetime.now().strftime('%d %B %Y  %H:%M')}")
 
-    print("=" * 55 + "\n")
+print("=" * 55 + "\n")
 
-    soup  = fetch(URL)
+print("  Loading existing summaries...")
 
-    items = scrape(soup)
+existing_summaries = load_existing_summaries()
 
-    if not items:
+print("\n  Fetching NHS Digital page...")
 
-        print("\nERROR: No items extracted")
+soup = fetch(TARGET_URL)
 
-        sys.exit(1)
+print("\n  Scanning for DAB approval sections...")
 
-    print(f"\n  TOTAL: {len(items)} items\n")
+items = scrape(soup)
 
-    for idx, item in enumerate(items, 1):
+if not items:
 
-        print(
+print("\nERROR: No items extracted")
 
-            f"  {idx:<3}  {item['ref']:<20}  "
+sys.exit(1)
 
-            f"{item['date']:<12}  {item['title'][:40]}"
+print(f"\n  TOTAL: {len(items)} items found")
 
-        )
+print("\n  Processing AI summaries...")
 
-    if preview:
+items = add_summaries(items, existing_summaries)
 
-        print("\n  Preview only - HTML not changed")
+print(f"\n  {'─' * 70}")
 
-        return
+print(f"  {'#':<4}  {'REF':<20}  {'DATE':<12}  {'AI':<5}  TITLE")
 
-    inject(items, HTML_FILE)
+print(f"  {'─'*4}  {'─'*20}  {'─'*12}  {'─'*5}  {'─'*25}")
 
-    print("\n" + "=" * 55)
+for idx, item in enumerate(items, 1):
 
-    print(f"  DONE - {HTML_FILE} updated")
+has = "Yes" if item["summary"] else "No"
 
-    print("=" * 55 + "\n")
+print(
 
+f"  {idx:<4}  {item['ref']:<20}  "
+
+f"{item['date']:<12}  {has:<5}  {item['title'][:30]}"
+
+)
+
+print(f"  {'─' * 70}")
+
+if preview:
+
+print("\n  Preview only — HTML not changed")
+
+return
+
+inject(items, HTML_FILE)
+
+print("\n" + "=" * 55)
+
+print(f"  DONE — {HTML_FILE} updated")
+
+print("=" * 55 + "\n")
 
 if __name__ == "__main__":
 
-    main()
+main()
