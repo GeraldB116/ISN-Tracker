@@ -1,26 +1,34 @@
-"""
-Altera ISN Tracker - NHS Digital Scraper
-Scrapes DAB approval tables from the NHS Digital latest-activity page.
-"""
-
 import re
 import os
 import sys
+import time
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+
+try:
+    import cloudscraper
+    HAS_CLOUDSCRAPER = True
+except ImportError:
+    HAS_CLOUDSCRAPER = False
 
 URL = "https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity"
 HTML_FILE = "index.html"
 BASE_URL = "https://digital.nhs.uk"
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "Accept-Language": "en-GB,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Cache-Control": "max-age=0",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "DNT": "1",
 }
 
 MONTH_MAP = {
@@ -52,7 +60,7 @@ def clean(text):
 
 
 def parse_date(raw):
-    """Convert UK date string to ISO YYYY-MM-DD."""
+    """Convert UK date string to ISO format."""
     raw = clean(raw)
     m = re.match(r"^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})", raw)
     if m:
@@ -85,7 +93,7 @@ def parse_type(raw):
 
 
 def extract_ref(name_text):
-    """Extract reference code from start of Name cell text."""
+    """Extract reference code from start of name text."""
     m = REF_RE.match(name_text)
     if m:
         return m.group(1).upper().strip()
@@ -93,16 +101,47 @@ def extract_ref(name_text):
 
 
 def fetch(url):
-    """Download a page and return BeautifulSoup object."""
+    """Fetch page with cloudscraper (bypasses 403), fallback to requests."""
     print(f"  Fetching : {url}")
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    resp.raise_for_status()
-    print(f"  Status   : {resp.status_code} OK")
-    return BeautifulSoup(resp.text, "lxml")
+    errors = []
+    if HAS_CLOUDSCRAPER:
+        for attempt in range(3):
+            try:
+                scraper = cloudscraper.create_scraper(
+                    browser={"browser": "chrome", "platform": "windows", "desktop": True}
+                )
+                resp = scraper.get(url, timeout=30)
+                if resp.status_code == 200:
+                    print(f"  Status   : 200 OK (cloudscraper, attempt {attempt + 1})")
+                    return BeautifulSoup(resp.text, "lxml")
+                else:
+                    errors.append(f"cloudscraper attempt {attempt + 1}: status {resp.status_code}")
+                    time.sleep(2)
+            except Exception as e:
+                errors.append(f"cloudscraper attempt {attempt + 1}: {e}")
+                time.sleep(2)
+    for attempt in range(3):
+        try:
+            session = requests.Session()
+            session.headers.update(HEADERS)
+            resp = session.get(url, timeout=30)
+            if resp.status_code == 200:
+                print(f"  Status   : 200 OK (requests, attempt {attempt + 1})")
+                return BeautifulSoup(resp.text, "lxml")
+            else:
+                errors.append(f"requests attempt {attempt + 1}: status {resp.status_code}")
+                time.sleep(3)
+        except Exception as e:
+            errors.append(f"requests attempt {attempt + 1}: {e}")
+            time.sleep(3)
+    print("\n  ERROR: Could not fetch the page after all attempts.")
+    for err in errors:
+        print(f"    {err}")
+    sys.exit(1)
 
 
 def scrape(soup):
-    """Find all DAB approval sections and extract items from desktop tables."""
+    """Extract all items from DAB approval tables."""
     sections = soup.find_all(
         "div",
         id=re.compile(r"dab-approvals", re.IGNORECASE),
@@ -116,11 +155,15 @@ def scrape(soup):
         print(f"  -- {label}")
         table = section.find("table", class_="nhsd-!t-display-s-show-table")
         if not table:
-            print("     No desktop table found - skipping.")
+            tables = section.find_all("table")
+            if tables:
+                table = tables[0]
+        if not table:
+            print(f"     No table found - skipping.\n")
             continue
         tbody = table.find("tbody")
         if not tbody:
-            print("     Table has no tbody - skipping.")
+            print(f"     No tbody found - skipping.\n")
             continue
         rows = tbody.find_all("tr")
         print(f"     Rows found : {len(rows)}")
@@ -129,30 +172,25 @@ def scrape(soup):
             cells = tr.find_all(["td", "th"])
             if len(cells) < 2:
                 continue
-            name_cell = cells[0]
-            name_text = clean(name_cell.get_text(separator=" "))
-            if not name_text:
+            name_raw = cells[0].get_text(separator=" ")
+            name_clean = clean(name_raw)
+            if not name_clean:
                 continue
-            ref = extract_ref(name_text)
-            title = name_text
+            ref = extract_ref(name_clean)
+            title = name_clean
             dedup_key = ref if ref else title
             if dedup_key in seen:
                 continue
             seen.add(dedup_key)
-            date_text = cells[1].get_text(separator=" ") if len(cells) > 1 else ""
-            date_iso = parse_date(date_text)
-            type_text = cells[2].get_text(separator=" ") if len(cells) > 2 else ""
-            item_type = parse_type(type_text)
-            link_tag = name_cell.find("a", href=True)
+            date_raw = cells[1].get_text(separator=" ") if len(cells) > 1 else ""
+            date_iso = parse_date(date_raw)
+            type_raw = cells[2].get_text(separator=" ") if len(cells) > 2 else ""
+            item_type = parse_type(type_raw)
+            link_tag = cells[0].find("a", href=True)
             link = ""
             if link_tag:
                 href = link_tag.get("href", "")
-                if href.startswith("http"):
-                    link = href
-                elif href.startswith("/"):
-                    link = BASE_URL + href
-                else:
-                    link = href
+                link = href if href.startswith("http") else BASE_URL + href
             all_items.append({
                 "ref": ref,
                 "title": title,
@@ -167,7 +205,7 @@ def scrape(soup):
 
 
 def esc(s):
-    """Escape a string for use inside a JavaScript double-quoted string."""
+    """Escape string for JavaScript."""
     s = s.replace("\\", "\\\\")
     s = s.replace('"', '\\"')
     s = s.replace("\n", "\\n")
@@ -175,118 +213,81 @@ def esc(s):
     return s
 
 
+def get_field(name, text):
+    """Extract a field value from a JS object string."""
+    m = re.search(rf'{name}:"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
+    if not m:
+        return ""
+    val = m.group(1)
+    val = val.replace('\\"', '"').replace("\\\\", "\\")
+    return val
+
+
 def build_js_array(items):
-    """Build the JavaScript array literal for the DATA variable."""
+    """Build the JavaScript DATA array."""
     rows = []
-    for item in items:
-        row = (
+    for i in items:
+        rows.append(
             f'  {{ '
-            f'ref:"{esc(item["ref"])}", '
-            f'title:"{esc(item["title"])}", '
-            f'type:"{esc(item["type"])}", '
-            f'status:"{esc(item["status"])}", '
-            f'date:"{esc(item["date"])}", '
-            f'link:"{esc(item.get("link", ""))}", '
-            f'conformance:"", '
-            f'documents:"", '
-            f'summary:"" '
+            f'ref:"{esc(i["ref"])}", '
+            f'title:"{esc(i["title"])}", '
+            f'type:"{esc(i["type"])}", '
+            f'status:"{esc(i["status"])}", '
+            f'date:"{esc(i["date"])}", '
+            f'link:"{esc(i.get("link", ""))}", '
+            f'conformance:"{esc(i.get("conformance", ""))}", '
+            f'documents:"{esc(i.get("documents", ""))}", '
+            f'summary:"{esc(i.get("summary", ""))}" '
             f'}}'
         )
-        rows.append(row)
     return "[\n" + ",\n".join(rows) + "\n]"
 
 
-def merge_with_existing(new_items, html_path):
-    """Merge new scraped items with existing items that have summaries."""
+def inject(items, html_path):
+    """Replace DATA array in HTML file, preserving existing summaries."""
     if not os.path.exists(html_path):
-        return new_items
+        print(f"\n  ERROR: '{html_path}' not found.")
+        sys.exit(1)
     with open(html_path, "r", encoding="utf-8") as f:
         html = f.read()
+    existing = {}
     data_match = re.search(
         r"(?:const|var)\s+DATA\s*=\s*\[([\s\S]*?)\]\s*;",
         html,
         re.MULTILINE,
     )
-    if not data_match:
-        return new_items
-    data_str = data_match.group(1)
-    existing = {}
-    for obj in re.finditer(r"\{[^{}]+\}", data_str, re.DOTALL):
-        o = obj.group(0)
-        m_ref = re.search(r'ref:"((?:[^"\\]|\\.)*)"', o, re.DOTALL)
-        m_title = re.search(r'title:"((?:[^"\\]|\\.)*)"', o, re.DOTALL)
-        m_summary = re.search(r'summary:"((?:[^"\\]|\\.)*)"', o, re.DOTALL)
-        m_conform = re.search(r'conformance:"((?:[^"\\]|\\.)*)"', o, re.DOTALL)
-        m_docs = re.search(r'documents:"((?:[^"\\]|\\.)*)"', o, re.DOTALL)
-        ref_val = m_ref.group(1) if m_ref else ""
-        title_val = m_title.group(1) if m_title else ""
-        summary_val = m_summary.group(1) if m_summary else ""
-        conform_val = m_conform.group(1) if m_conform else ""
-        docs_val = m_docs.group(1) if m_docs else ""
-        key = ref_val if ref_val else title_val
-        if key and (summary_val or conform_val or docs_val):
-            existing[key] = {
-                "summary": summary_val,
-                "conformance": conform_val,
-                "documents": docs_val,
-            }
-    merged_count = 0
-    for item in new_items:
+    if data_match:
+        data_str = data_match.group(1)
+        for obj in re.finditer(r"\{[^{}]+\}", data_str, re.DOTALL):
+            o = obj.group(0)
+            ref = get_field("ref", o)
+            title = get_field("title", o)
+            key = ref if ref else title
+            if key:
+                existing[key] = {
+                    "summary": get_field("summary", o),
+                    "conformance": get_field("conformance", o),
+                    "documents": get_field("documents", o),
+                }
+        print(f"  Found {len(existing)} existing items with metadata.")
+    for item in items:
         key = item["ref"] if item["ref"] else item["title"]
         if key in existing:
-            item["summary"] = existing[key]["summary"]
-            item["conformance"] = existing[key]["conformance"]
-            item["documents"] = existing[key]["documents"]
-            merged_count += 1
-        else:
-            item["summary"] = ""
-            item["conformance"] = ""
-            item["documents"] = ""
-    print(f"  Merged {merged_count} existing summaries into new data.")
-    return new_items
-
-
-def build_js_array_full(items):
-    """Build JS array including summary, conformance, documents fields."""
-    rows = []
-    for item in items:
-        row = (
-            f'  {{ '
-            f'ref:"{esc(item["ref"])}", '
-            f'title:"{esc(item["title"])}", '
-            f'type:"{esc(item["type"])}", '
-            f'status:"{esc(item["status"])}", '
-            f'date:"{esc(item["date"])}", '
-            f'link:"{esc(item.get("link", ""))}", '
-            f'conformance:"{esc(item.get("conformance", ""))}", '
-            f'documents:"{esc(item.get("documents", ""))}", '
-            f'summary:"{esc(item.get("summary", ""))}" '
-            f'}}'
-        )
-        rows.append(row)
-    return "[\n" + ",\n".join(rows) + "\n]"
-
-
-def inject(items, html_path):
-    """Replace the DATA array in the HTML file with new items."""
-    if not os.path.exists(html_path):
-        print(f"\n  ERROR: '{html_path}' not found.")
-        print(f"  Place scraper.py in the same folder as {html_path}")
-        sys.exit(1)
-    with open(html_path, "r", encoding="utf-8") as f:
-        html = f.read()
-    if "DATA" not in html:
-        print(f"\n  ERROR: 'DATA' not found in {html_path}.")
-        print("  Make sure you are using the correct HTML file.")
-        sys.exit(1)
+            ex = existing[key]
+            if ex["summary"] and not item.get("summary"):
+                item["summary"] = ex["summary"]
+            if ex["conformance"] and not item.get("conformance"):
+                item["conformance"] = ex["conformance"]
+            if ex["documents"] and not item.get("documents"):
+                item["documents"] = ex["documents"]
     pattern = re.compile(
         r"((?:const|var)\s+DATA\s*=\s*)\[[\s\S]*?\]\s*;",
         re.MULTILINE,
     )
-    new_array = build_js_array_full(items)
+    new_array = build_js_array(items)
     new_html, n = pattern.subn(rf"\g<1>{new_array};", html)
     if n == 0:
-        print("\n  ERROR: Could not find and replace the DATA array.")
+        print("\n  ERROR: Could not find DATA array in HTML.")
         sys.exit(1)
     today = datetime.now().strftime("%d %b %Y")
     new_html = re.sub(
@@ -296,7 +297,9 @@ def inject(items, html_path):
     )
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(new_html)
-    print(f"  Saved {html_path} with {len(items)} items.")
+    with_summary = sum(1 for i in items if i.get("summary"))
+    print(f"\n  {html_path} updated - {len(items)} items written.")
+    print(f"  Items with summaries preserved: {with_summary}")
 
 
 def main():
@@ -307,16 +310,14 @@ def main():
     print("  Altera ISN Tracker - NHS Digital Scraper")
     print(f"  {datetime.now().strftime('%d %B %Y  %H:%M')}")
     print("=" * 60)
-    print("\n  Fetching page...\n")
+    print(f"\n  Fetching page...\n")
     soup = fetch(URL)
     print("\n  Scanning DAB approval sections...")
     items = scrape(soup)
     if not items:
-        print("\n  No items were extracted.")
-        print("  The page structure may have changed.")
+        print("\n  WARNING: No items were extracted.")
         sys.exit(1)
-    print(f"  Total unique items : {len(items)}")
-    print()
+    print(f"{'=' * 75}")
     print(f"  {'#':<4}  {'REF':<20}  {'DATE':<12}  {'TYPE':<24}  TITLE")
     print(f"  {'='*4}  {'='*20}  {'='*12}  {'='*24}  {'='*25}")
     for i, item in enumerate(items, 1):
@@ -325,23 +326,17 @@ def main():
             f"  {i:<4}  {ref_display:<20}  {item['date']:<12}  "
             f"{item['type']:<24}  {item['title'][:35]}"
         )
-    print()
+    print(f"{'=' * 75}")
+    print(f"  Total : {len(items)} items")
+    print(f"{'=' * 75}\n")
     if preview:
         print("  Preview mode - HTML file was NOT changed.\n")
         return
-    print("  Merging with existing summaries...")
-    items = merge_with_existing(items, HTML_FILE)
-    print(f"\n  Writing to {HTML_FILE}...")
+    print(f"  Writing to {HTML_FILE}...")
     inject(items, HTML_FILE)
-    has_summary = sum(1 for i in items if i.get("summary"))
-    needs_summary = sum(1 for i in items if not i.get("summary"))
     print()
     print("=" * 60)
-    print(f"  Done! {len(items)} items in {HTML_FILE}")
-    print(f"  With summaries    : {has_summary}")
-    print(f"  Needs summaries   : {needs_summary}")
-    if needs_summary > 0:
-        print(f"\n  Run: python generate_summaries.py")
+    print(f"  Done! Open '{HTML_FILE}' in your browser.")
     print("=" * 60)
     print()
 
