@@ -1,19 +1,20 @@
 """
 Altera ISN Tracker - NHS Digital Scraper
-=========================================
-Source : https://digital.nhs.uk/.../latest-activity
-Method : Playwright stealth browser with multiple fallbacks
-Output : Updates DATA array in index.html
+Uses Playwright (real browser) on GitHub Actions to bypass 403.
+Falls back to cloudscraper/requests for local use.
 """
 
 import re
 import os
 import sys
 import time
-import random
-import requests
-from bs4 import BeautifulSoup
 from datetime import datetime
+
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
 
 try:
     import cloudscraper
@@ -27,21 +28,11 @@ try:
 except ImportError:
     HAS_PLAYWRIGHT = False
 
+from bs4 import BeautifulSoup
+
 URL = "https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity"
 HTML_FILE = "index.html"
 BASE_URL = "https://digital.nhs.uk"
-
-MONTH_MAP = {
-    "january": "01", "february": "02", "march": "03",
-    "april": "04", "may": "05", "june": "06",
-    "july": "07", "august": "08", "september": "09",
-    "october": "10", "november": "11", "december": "12",
-}
-
-REF_RE = re.compile(
-    r"^((?:DAPB|DCB|SCCI|ISB|ISN)\d+[\w\-]*)",
-    re.IGNORECASE,
-)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -58,8 +49,18 @@ HEADERS = {
     "DNT": "1",
 }
 
+MONTH_MAP = {
+    "january": "01", "february": "02", "march": "03",
+    "april": "04", "may": "05", "june": "06",
+    "july": "07", "august": "08", "september": "09",
+    "october": "10", "november": "11", "december": "12",
+}
 
-# ---- helpers ----
+REF_RE = re.compile(
+    r"^((?:DAPB|DCB|SCCI|ISB|ISN)\d+[\w\-]*)",
+    re.IGNORECASE,
+)
+
 
 def clean(text):
     """Strip non-breaking spaces and collapse whitespace."""
@@ -109,106 +110,27 @@ def extract_ref(name_text):
     return ""
 
 
-def esc(s):
-    """Escape string for JavaScript."""
-    s = s.replace("\\", "\\\\")
-    s = s.replace('"', '\\"')
-    s = s.replace("\n", "\\n")
-    s = s.replace("\r", "")
-    return s
-
-
-def get_field(name, text):
-    """Extract a field value from a JS object string."""
-    m = re.search(rf'{name}:"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
-    if not m:
-        return ""
-    val = m.group(1)
-    val = val.replace('\\"', '"').replace("\\\\", "\\")
-    return val
-
-
-# ---- fetch with multiple methods ----
-
 def fetch_with_playwright(url):
-    """Use a real headless Chrome browser with stealth settings."""
-    if not HAS_PLAYWRIGHT:
-        return None
-
-    print("  Method   : Playwright (stealth browser)")
-
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                    "--window-size=1920,1080",
-                ]
-            )
-
-            context = browser.new_context(
-                viewport={"width": 1920, "height": 1080},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                locale="en-GB",
-                timezone_id="Europe/London",
-                extra_http_headers={
-                    "Accept-Language": "en-GB,en;q=0.9",
-                    "DNT": "1",
-                },
-            )
-
-            page = context.new_page()
-
-            # Remove automation detection
-            page.add_init_script("""
-                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-                Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
-                Object.defineProperty(navigator, 'languages', {get: () => ['en-GB', 'en']});
-                window.chrome = {runtime: {}};
-            """)
-
-            # Try domcontentloaded first (faster, more reliable)
-            for wait_until in ["domcontentloaded", "load"]:
-                try:
-                    print(f"  Trying   : wait_until={wait_until}, timeout=90s")
-                    page.goto(url, wait_until=wait_until, timeout=90000)
-
-                    # Give the page a moment to render dynamic content
-                    page.wait_for_timeout(3000)
-
-                    html = page.content()
-                    browser.close()
-
-                    if "dab-approvals" in html.lower():
-                        print(f"  Status   : OK (Playwright, {wait_until})")
-                        return BeautifulSoup(html, "lxml")
-                    else:
-                        print(f"  Warning  : Page loaded but no DAB content found ({wait_until})")
-                        continue
-
-                except Exception as e:
-                    print(f"  Warning  : Playwright {wait_until} failed: {str(e)[:100]}")
-                    continue
-
-            browser.close()
-
-    except Exception as e:
-        print(f"  Warning  : Playwright error: {str(e)[:120]}")
-
-    return None
+    """Fetch using a real Chrome browser via Playwright."""
+    print("  Method   : Playwright (real browser)")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+            locale="en-GB",
+        )
+        page = context.new_page()
+        page.goto(url, wait_until="networkidle", timeout=60000)
+        content = page.content()
+        browser.close()
+    print(f"  Status   : 200 OK (Playwright)")
+    return BeautifulSoup(content, "lxml")
 
 
 def fetch_with_cloudscraper(url):
-    """Use cloudscraper to bypass Cloudflare."""
-    if not HAS_CLOUDSCRAPER:
-        return None
-
+    """Fetch using cloudscraper."""
     print("  Method   : cloudscraper")
-
     for attempt in range(3):
         try:
             scraper = cloudscraper.create_scraper(
@@ -220,18 +142,16 @@ def fetch_with_cloudscraper(url):
                 return BeautifulSoup(resp.text, "lxml")
             else:
                 print(f"  Warning  : cloudscraper attempt {attempt + 1} got status {resp.status_code}")
-            time.sleep(2 + random.random() * 2)
+                time.sleep(2)
         except Exception as e:
-            print(f"  Warning  : cloudscraper attempt {attempt + 1}: {str(e)[:80]}")
+            print(f"  Warning  : cloudscraper attempt {attempt + 1} failed: {e}")
             time.sleep(2)
-
     return None
 
 
 def fetch_with_requests(url):
-    """Standard requests with full browser headers."""
+    """Fetch using plain requests."""
     print("  Method   : requests")
-
     for attempt in range(3):
         try:
             session = requests.Session()
@@ -242,80 +162,39 @@ def fetch_with_requests(url):
                 return BeautifulSoup(resp.text, "lxml")
             else:
                 print(f"  Warning  : requests attempt {attempt + 1} got status {resp.status_code}")
-            time.sleep(3 + random.random() * 2)
+                time.sleep(3)
         except Exception as e:
-            print(f"  Warning  : requests attempt {attempt + 1}: {str(e)[:80]}")
+            print(f"  Warning  : requests attempt {attempt + 1} failed: {e}")
             time.sleep(3)
-
-    return None
-
-
-def fetch_google_cache(url):
-    """Try fetching from Google's cache as last resort."""
-    print("  Method   : Google Cache (fallback)")
-    cache_url = f"https://webcache.googleusercontent.com/search?q=cache:{url}"
-
-    try:
-        resp = requests.get(cache_url, headers=HEADERS, timeout=30)
-        if resp.status_code == 200 and "dab-approvals" in resp.text.lower():
-            print("  Status   : OK (Google Cache)")
-            return BeautifulSoup(resp.text, "lxml")
-        else:
-            print(f"  Warning  : Google Cache returned status {resp.status_code} or no DAB content")
-    except Exception as e:
-        print(f"  Warning  : Google Cache failed: {str(e)[:80]}")
-
     return None
 
 
 def fetch(url):
-    """Try all methods in order until one succeeds."""
+    """Try Playwright first, then cloudscraper, then requests."""
     print(f"  Fetching : {url}")
 
-    available = []
+    # Try Playwright first (works on GitHub Actions)
     if HAS_PLAYWRIGHT:
-        available.append("Playwright")
+        try:
+            return fetch_with_playwright(url)
+        except Exception as e:
+            print(f"  Warning  : Playwright failed: {e}")
+
+    # Try cloudscraper second
     if HAS_CLOUDSCRAPER:
-        available.append("cloudscraper")
-    available.append("requests")
-    available.append("Google Cache")
+        result = fetch_with_cloudscraper(url)
+        if result:
+            return result
 
-    print(f"  Available: {', '.join(available)}")
-    print()
-
-    # Method 1: Playwright (real browser)
-    soup = fetch_with_playwright(url)
-    if soup:
-        return soup
-
-    print()
-
-    # Method 2: cloudscraper
-    soup = fetch_with_cloudscraper(url)
-    if soup:
-        return soup
-
-    print()
-
-    # Method 3: plain requests
-    soup = fetch_with_requests(url)
-    if soup:
-        return soup
-
-    print()
-
-    # Method 4: Google Cache
-    soup = fetch_google_cache(url)
-    if soup:
-        return soup
+    # Try plain requests last
+    if HAS_REQUESTS:
+        result = fetch_with_requests(url)
+        if result:
+            return result
 
     print("\n  ERROR: Could not fetch the page with any method.")
-    print("  NHS Digital may be blocking GitHub Actions servers.")
-    print("  Try running scraper.py on your local PC instead.")
     sys.exit(1)
 
-
-# ---- scrape logic ----
 
 def scrape(soup):
     """Extract all items from DAB approval tables."""
@@ -323,7 +202,6 @@ def scrape(soup):
         "div",
         id=re.compile(r"dab-approvals", re.IGNORECASE),
     )
-
     print(f"\n  Found {len(sections)} DAB approval section(s):\n")
 
     all_items = []
@@ -339,21 +217,19 @@ def scrape(soup):
             tables = section.find_all("table")
             if tables:
                 table = tables[0]
-
         if not table:
-            print("     No table found - skipping.\n")
+            print(f"     No table found - skipping.\n")
             continue
 
         tbody = table.find("tbody")
         if not tbody:
-            print("     No tbody found - skipping.\n")
+            print(f"     No tbody found - skipping.\n")
             continue
 
         rows = tbody.find_all("tr")
         print(f"     Rows found : {len(rows)}")
 
         section_count = 0
-
         for tr in rows:
             cells = tr.find_all(["td", "th"])
             if len(cells) < 2:
@@ -399,10 +275,27 @@ def scrape(soup):
     return all_items
 
 
-# ---- build JS and inject ----
+def esc(s):
+    """Escape string for JavaScript."""
+    s = s.replace("\\", "\\\\")
+    s = s.replace('"', '\\"')
+    s = s.replace("\n", "\\n")
+    s = s.replace("\r", "")
+    return s
+
+
+def get_field(name, text):
+    """Extract a field value from a JS object string."""
+    m = re.search(rf'{name}:"((?:[^"\\]|\\.)*)"', text, re.DOTALL)
+    if not m:
+        return ""
+    val = m.group(1)
+    val = val.replace('\\"', '"').replace("\\\\", "\\")
+    return val
+
 
 def build_js_array(items):
-    """Build the JavaScript DATA array string."""
+    """Build the JavaScript DATA array."""
     rows = []
     for i in items:
         rows.append(
@@ -436,7 +329,6 @@ def inject(items, html_path):
         html,
         re.MULTILINE,
     )
-
     if data_match:
         data_str = data_match.group(1)
         for obj in re.finditer(r"\{[^{}]+\}", data_str, re.DOTALL):
@@ -453,16 +345,20 @@ def inject(items, html_path):
 
     print(f"  Found {len(existing)} existing items with metadata.")
 
+    merged = 0
     for item in items:
         key = item["ref"] if item["ref"] else item["title"]
         if key in existing:
             ex = existing[key]
             if ex["summary"] and not item.get("summary"):
                 item["summary"] = ex["summary"]
+                merged += 1
             if ex["conformance"] and not item.get("conformance"):
                 item["conformance"] = ex["conformance"]
             if ex["documents"] and not item.get("documents"):
                 item["documents"] = ex["documents"]
+
+    print(f"  Summaries preserved: {merged}")
 
     pattern = re.compile(
         r"((?:const|var)\s+DATA\s*=\s*)\[[\s\S]*?\]\s*;",
@@ -487,10 +383,8 @@ def inject(items, html_path):
 
     with_summary = sum(1 for i in items if i.get("summary"))
     print(f"\n  {html_path} updated - {len(items)} items written.")
-    print(f"  Items with summaries preserved: {with_summary}")
+    print(f"  Items with summaries: {with_summary}")
 
-
-# ---- main ----
 
 def main():
     """Main entry point."""
@@ -504,13 +398,11 @@ def main():
 
     if HAS_PLAYWRIGHT:
         print("\n  Playwright : available (will use real browser)")
-    else:
+    elif HAS_CLOUDSCRAPER:
         print("\n  Playwright : not available")
-
-    if HAS_CLOUDSCRAPER:
         print("  cloudscraper: available")
     else:
-        print("  cloudscraper: not available")
+        print("\n  Using: requests only")
 
     print(f"\n  Fetching page...\n")
     soup = fetch(URL)
@@ -525,14 +417,12 @@ def main():
     print(f"{'=' * 75}")
     print(f"  {'#':<4}  {'REF':<20}  {'DATE':<12}  {'TYPE':<24}  TITLE")
     print(f"  {'='*4}  {'='*20}  {'='*12}  {'='*24}  {'='*25}")
-
     for i, item in enumerate(items, 1):
         ref_display = item["ref"] if item["ref"] else "(no ref)"
         print(
             f"  {i:<4}  {ref_display:<20}  {item['date']:<12}  "
             f"{item['type']:<24}  {item['title'][:35]}"
         )
-
     print(f"{'=' * 75}")
     print(f"  Total : {len(items)} items")
     print(f"{'=' * 75}\n")
