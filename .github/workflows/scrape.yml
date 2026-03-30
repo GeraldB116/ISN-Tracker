@@ -2,62 +2,70 @@ name: Scrape NHS Digital and Deploy
 
 on:
 
-  schedule:
+schedule:
 
-    - cron: '0 7 * * 1'
+- cron: '0 7 * * 1'
 
-  workflow_dispatch:
+workflow_dispatch:
 
 permissions:
 
-  contents: write
+contents: write
 
 jobs:
 
-  scrape-and-deploy:
+scrape-and-deploy:
 
-    runs-on: ubuntu-latest
+runs-on: ubuntu-latest
 
-    steps:
+steps:
 
-      - name: Checkout repository
+- name: Checkout repository
 
-        uses: actions/checkout@v4
+uses: actions/checkout@v4
 
-      - name: Set up Python
+- name: Set up Python
 
-        uses: actions/setup-python@v5
+uses: actions/setup-python@v5
 
-        with:
+with:
 
-          python-version: '3.12'
+python-version: '3.12'
 
-      - name: Install dependencies
+- name: Install Python packages
 
-        run: pip install cloudscraper beautifulsoup4 lxml openai requests
+run: pip install playwright beautifulsoup4 lxml openai requests cloudscraper
 
-      - name: Run scraper
+- name: Install Playwright browser
 
-        run: python scraper.py
+run: playwright install --with-deps chromium
 
-      - name: Generate AI summaries
+- name: Verify Playwright
 
-        env:
+run: python -c "from playwright.sync_api import sync_playwright; print('Playwright OK')"
 
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+- name: Run scraper
 
-        run: python generate_summaries.py --auto
+run: python scraper.py
 
-      - name: Commit and push
+- name: Generate AI summaries
 
-        run: |
+env:
 
-          git config user.name "github-actions[bot]"
+OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+run: python generate_summaries.py --auto
 
-          git add index.html
+- name: Commit and push
 
-          git diff --cached --quiet || git commit -m "Auto-update $(date +'%Y-%m-%d')"
+run: |
 
-          git push
+git config user.name "github-actions[bot]"
+
+git config user.email "github-actions[bot]@users.noreply.github.com"
+
+git add index.html
+
+git diff --cached --quiet || git commit -m "Auto-update $(date +'%Y-%m-%d')"
+
+git push
