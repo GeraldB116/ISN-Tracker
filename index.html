@@ -359,19 +359,31 @@ function openPanel(idx) {
   var docsBox  = document.getElementById("pDocsBox");
   var docsList = document.getElementById("pDocsList");
   var docs = [];
-  try {
-    if (item.documents && item.documents.trim() && item.documents !== "[]") {
-      docs = JSON.parse(item.documents);
-    }
-  } catch(e) { docs = []; }
+
+  // Parse pipe-separated documents: "Title | URL || Title2 | URL2"
+  if (item.documents && item.documents.trim()) {
+    var rawDocs = item.documents.split("||");
+    rawDocs.forEach(function(entry) {
+      entry = entry.trim();
+      if (!entry) return;
+      var parts = entry.split("|");
+      if (parts.length >= 2) {
+        var title = parts[0].trim();
+        var url   = parts[1].trim();
+        if (title && url) {
+          docs.push({ title: title, url: url });
+        }
+      }
+    });
+  }
 
   if (docs.length > 0) {
     docsList.innerHTML = docs.map(function(doc) {
       var u = (doc.url || "").toLowerCase();
       var cls = "page", icon = "&#128196;";
-      if (u.indexOf(".pdf") !== -1)  { cls = "pdf";  icon = "&#128441;"; }
-      else if (u.indexOf(".doc") !== -1) { cls = "word"; icon = "&#128196;"; }
-      else if (u.indexOf(".xls") !== -1) { cls = "word"; icon = "&#128200;"; }
+      if (u.indexOf(".pdf") !== -1)       { cls = "pdf";  icon = "&#128441;"; }
+      else if (u.indexOf(".doc") !== -1)  { cls = "word"; icon = "&#128196;"; }
+      else if (u.indexOf(".xls") !== -1)  { cls = "word"; icon = "&#128200;"; }
       return '<div class="doc-item"><div class="doc-icon ' + cls + '">' + icon + '</div>' +
              '<a href="' + doc.url + '" target="_blank" rel="noopener noreferrer" class="doc-link">' + doc.title + '</a></div>';
     }).join("");
